@@ -1,7 +1,7 @@
 // Point d'entrée : écrans, séances, récompenses.
 import { h, svg, toast, confettis, estRose, bebew, slayDiva, effets, modeTest } from './ui.js';
 import { icone, sceau, petitSceau, laurier, medaille, illustrationInstall } from './visuels.js';
-import { chouette, portes, reagir, plumes, codeEnvole, adjuge, precharger, POSE_MODE, TENUES, SKINS, hibouSkin, skinPorte, danser, DUREE_DANSE } from './chouette.js';
+import { chouette, portes, reagir, plumes, codeEnvole, adjuge, precharger, POSE_MODE, TENUES, SKINS, hibouSkin, skinPorte, danser, DUREE_DANSE, coucou } from './chouette.js';
 import { lexouAnime, prechargerLexou } from './lexou.js';
 import { LAMPES, EFFETS, pieceDe } from './tour.js';
 import { son, reveillerAudio, surveillerAudio, appliquerSession, vibrer, rendreSon, NOMS_SONS } from './sons.js';
@@ -886,10 +886,23 @@ function lancer({ rounds, titre, type, zone, reprise, mode, genre = null, long =
     if (S.vies !== null) vies.replaceChildren(...[0, 1, 2].map((k) => h('span', { class: k < S.vies ? 'vie' : 'vie perdue' }, icone('coeur', 16))));
   }
 
+  // Lexou réagit pendant l'épreuve : trois, six et dix de suite, ou une erreur rattrapée. Jamais plus d'une fois
+  // toutes les huit secondes, quatre fois par séance au plus, et pas pendant un partiel blanc.
+  function lexouPendantLeJeu(rattrape) {
+    if (type === 'partiel' || (S.coucous || 0) >= 4 || Date.now() - (S.dernierCoucou || 0) < 8000) return;
+    const quoi = S.combo === 3 ? ['clin', 'Trois de suite.'] : S.combo === 6 ? ['marteau', 'Six d’affilée. Le jury note.'] : S.combo === 10 ? ['tribune', 'Dix. Rien à redire.'] : rattrape && S.combo === 1 && Math.random() < 0.5 ? ['lunettes', 'Bien rattrapé.'] : null;
+    if (!quoi) return;
+    S.coucous = (S.coucous || 0) + 1; S.dernierCoucou = Date.now();
+    coucou(...quoi);
+  }
+
   const ctx = {
     boss: type === 'boss',
     combo(ok, muet = false) {
+      const rattrape = ok && S.dernierFaux;
+      S.dernierFaux = !ok;
       S.combo = ok ? S.combo + 1 : 0;
+      lexouPendantLeJeu(rattrape);
       S.comboMax = Math.max(S.comboMax, S.combo);
       if (!muet) ctx.sonner(ok);
       majEntete();
@@ -2732,7 +2745,7 @@ async function demarrer() {
   else matieres();
   if (rembourse) toast(`Anciennes tenues retirées : ${fmt(rembourse)} jetons remboursés.`);
   if (evenement?.type === 'sursis') toast(`${pluriel(evenement.n, 'sursis', 'sursis')} utilisé${evenement.n > 1 ? 's' : ''} : ta série est sauve.`);
-  if (modeTest()) window.__app = { etat: () => etat, chouette, TENUES, reagir, resultats, get ix() { return ix; }, aller, ouvrirMatiere, matieres, lancerDefi, releverDefi, sauver, rendreSon, NOMS_SONS, appliquerTheme, guideInstallation, lancer, tirerRound, aRattraper, lancerRevisionJour, composerRevision, monClassement, cartePodium, lundi, jour, accueil, ficheCompte };
+  if (modeTest()) window.__app = { etat: () => etat, chouette, TENUES, reagir, resultats, get ix() { return ix; }, aller, ouvrirMatiere, matieres, lancerDefi, releverDefi, sauver, rendreSon, NOMS_SONS, appliquerTheme, guideInstallation, lancer, tirerRound, aRattraper, lancerRevisionJour, composerRevision, monClassement, cartePodium, lundi, jour, accueil, ficheCompte, coucou };
   setTimeout(surveillerFluidite, 1200);
   precharger();
 

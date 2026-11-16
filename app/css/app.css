@@ -2170,3 +2170,11 @@ body:has(#onglets[hidden]) .clone-sortant {
 .pf-puces { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .pf-puces span { padding: 6px 10px; border-radius: 999px; background: var(--banc-fort); font: 13px var(--ui); }
 .pf-note { font-size: 12px; }
+
+/* LEXOU PENDANT L'ÉPREUVE : une tête par le bord droit, puis il repart ------------- */
+.coucou { position: fixed; z-index: 60; right: -6px; top: calc(var(--haut-sur) + 104px); display: flex; align-items: center; gap: 6px; pointer-events: none; transform: translateX(110%); animation: coucou-entre .45s cubic-bezier(.2, 1.3, .4, 1) forwards; }
+.coucou.part { animation: coucou-sort .35s ease-in forwards; }
+.coucou .bulle { margin: 0; padding: 8px 12px; border-radius: 16px 16px 4px 16px; background: #fff; color: #1B1F3B; font: 700 14px/1.2 var(--ui); white-space: nowrap; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); transform-origin: right center; animation: coucou-bulle .3s .2s both; }
+@keyframes coucou-entre { 0% { transform: translateX(110%) rotate(8deg); } 100% { transform: translateX(0) rotate(0); } }
+@keyframes coucou-sort { to { transform: translateX(110%) rotate(8deg); } }
+@keyframes coucou-bulle { 0% { transform: scale(.4); opacity: 0; } 100% { transform: none; opacity: 1; } }
