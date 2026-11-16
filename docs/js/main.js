@@ -4,6 +4,7 @@ import { icone, sceau, petitSceau, laurier, medaille, illustrationInstall } from
 import { chouette, portes, reagir, plumes, codeEnvole, adjuge, precharger, POSE_MODE, TENUES, SKINS, hibouSkin, skinPorte, danser, DUREE_DANSE, coucou } from './chouette.js';
 import { lexouAnime, prechargerLexou } from './lexou.js';
 import { LAMPES, EFFETS, pieceDe } from './tour.js';
+import { jouerCommentaire, roundsCommentaire, arretPrioritaire, suiviCommentaire, COMMENTAIRES } from './commentaire.js';
 import { son, reveillerAudio, surveillerAudio, appliquerSession, vibrer, rendreSon, NOMS_SONS } from './sons.js';
 import { remplacerEtat, choisirAnnee, ajouterSemaine, gagnerAppel, erreursOuvertes, carnetVisible, changerEquipe,
   SCEAU_REUSSITE, SCEAU_FICHES, PRIME_MAITRISE, etat, M, charger, sauver, jour, lundi, rang, rangGeneral, verifierSerie, validerJour, relever, prixForclusion, noter, niveau, aRevoir, aRattraper,
@@ -26,7 +27,7 @@ import { images, chargerImages, preparerImage, enregistrerImage, retirerImage } 
 import { noter as suivre, contexte } from './suivi.js';
 import { jouerFormule } from './formule.js';
 
-const TOUS_JEUX = { ...JEUX, formule: jouerFormule, atelier: jouerAtelier, pouvoirs: jouerPouvoirs, nuancier: jouerNuancier, plume: jouerPlume, cas: jouerCas, remede: jouerRemede, frise: jouerFrise, appel: jouerAppel, flash: jouerFlash, plaide: jouerPlaide, trous: jouerTrous, express: jouerExpress, syllogisme: jouerSyllogisme, casnu: jouerCasNu,
+const TOUS_JEUX = { ...JEUX, commentaire: jouerCommentaire, formule: jouerFormule, atelier: jouerAtelier, pouvoirs: jouerPouvoirs, nuancier: jouerNuancier, plume: jouerPlume, cas: jouerCas, remede: jouerRemede, frise: jouerFrise, appel: jouerAppel, flash: jouerFlash, plaide: jouerPlaide, trous: jouerTrous, express: jouerExpress, syllogisme: jouerSyllogisme, casnu: jouerCasNu,
   tri: jouerTri, mot: jouerMot, rangement: jouerRangement, quiadit: jouerQuiADit, scanner: jouerScanner, memory: jouerMemory };
 
 // FAIRE APPEL : chaque fiche ratée revient sous une autre forme, une question rapide.
@@ -707,7 +708,28 @@ function ecranRole() {
   montrer(barreHaut(), retourPalais(), h('section', { class: 'role' }, h('h1', {}, 'Le rôle'),
     h('p', { class: 'page-sous' }, 'Choisis ton exercice.'),
     ligneEntree('express', 'prorogation', 'Trois minutes', 'Trois épreuves rapides', lancerExpress, 0),
+    commentairesDispo() ? ligneEntree('commentaire', 'plan', 'Commentaires d’arrêt', 'De l’affaire au plan, jusqu’à tout réécrire de mémoire', ecranCommentaires, lignes.length * 2.2 + 2.2) : null,
     lignes, casL1, blocDunk()));
+}
+
+// COMMENTAIRES D'ARRÊT (droit administratif, équipe 1) : un arrêt, six épreuves, et un niveau par arrêt.
+const commentairesDispo = () => etat.matiere === 'admin' && etat.equipe === 1;
+function lancerCommentaire(c) {
+  lancer({ type: 'mode', mode: 'commentaire', titre: `Commentaire : ${c.nom}`, rounds: roundsCommentaire(c.id) });
+}
+const NIVEAUX_CMT = ['À découvrir', 'Reconnu', 'Maîtrisé', 'Restitué'];
+function ecranCommentaires() {
+  const prio = arretPrioritaire();
+  montrer(barreHaut(), h('button', { class: 'bouton-matiere', onClick: () => { son('retour'); fixerSens('arriere'); aller('role'); } }, icone('retour', 18), 'Le rôle'),
+    h('section', { class: 'role cmt-liste' }, h('h1', {}, 'Commentaires d’arrêt'),
+      h('p', { class: 'page-sous' }, 'Pour chaque arrêt : l’affaire, le problème de droit, la solution, la problématique, le plan, puis tout réécrire de mémoire. Chaque séance réussie fait monter l’arrêt d’un niveau, et l’aide diminue.'),
+      h('button', { class: 'bouton-or', 'data-cmt-prio': '', onClick: () => lancerCommentaire(prio) }, `Commencer par ${prio.nom}`),
+      h('ul', { class: 'cmt-arrets' }, COMMENTAIRES.map((c) => {
+        const s = suiviCommentaire(c.id);
+        return h('li', {}, h('button', { class: 'cmt-arret', 'data-cmt': c.id, onClick: () => lancerCommentaire(c) },
+          h('span', { class: 'cmt-arret-txt' }, h('b', {}, c.nom), h('small', {}, `${c.ref}. ${c.td}.`)),
+          h('span', { class: 'cmt-niveau', 'aria-label': `Niveau : ${NIVEAUX_CMT[s.niveau]}` }, h('span', { class: 'cmt-points' }, [0, 1, 2].map((k) => h('i', { class: k < s.niveau ? 'plein' : '' }))), h('small', {}, NIVEAUX_CMT[s.niveau]))));
+      }))));
 }
 
 // Vers l'examen : un enchaînement facultatif, sans rappel ni compte à rebours.
@@ -809,6 +831,7 @@ function choixGenre(m) {
   document.body.append(voile);
 }
 function lancerMode(m, genre = null) {
+  if (m === 'commentaire') { lancerCommentaire(arretPrioritaire()); return; }
   // En obligations, un exercice choisi puise dans tout le cours : les chambres rythment le défi et les audiences.
   // La formule puise dans toutes les chambres ouvertes : peu d'arrêts s'y prêtent.
   let zones = m === 'formule' && !estOblig() ? zonesOuvertes(ix) : zonesCours();
