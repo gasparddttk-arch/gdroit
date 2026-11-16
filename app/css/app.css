@@ -2232,3 +2232,5 @@ body:has(#onglets[hidden]) .clone-sortant {
 .cmt-points i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--carte-bord); }
 .cmt-points i.plein { background: var(--or); border-color: var(--or); }
 .cmt-liste .bouton-or { width: 100%; margin-top: 4px; }
+
+.tour-liste.une-colonne { grid-template-columns: 1fr; list-style: none; padding: 0; gap: 8px; }

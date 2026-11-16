@@ -1210,10 +1210,12 @@ async function execGroupe1(b, PORT, erreurs) {
     const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
     await p.goto(URLB + '?test'); await p.waitForSelector('.tribune');
     // Réservé au droit administratif, équipe 1.
-    await p.evaluate(() => { const e = window.__app.etat(); e.matiere = 'admin'; e.equipe = 2; window.__app.aller('role'); });
-    await p.waitForSelector('.role'); assert.equal(await p.locator('[data-mode="commentaire"]').count(), 0, 'pas en équipe 2');
-    await p.evaluate(() => { const e = window.__app.etat(); e.equipe = 1; e.reglages.bullesVues = { commentaire: true }; window.__app.aller('role'); });
-    await p.tap('[data-mode="commentaire"]'); await p.waitForSelector('.cmt-arrets');
+    await p.evaluate(() => { const e = window.__app.etat(); e.matiere = 'admin'; e.equipe = 2; window.__app.aller('carte'); });
+    await p.waitForSelector('.tour-ecran'); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'pas en équipe 2');
+    await p.evaluate(() => { const e = window.__app.etat(); e.equipe = 1; e.reglages.bullesVues = { commentaire: true }; window.__app.aller('palais'); window.__app.aller('carte'); });
+    await p.waitForSelector('.tour-etage[data-zone="td"][data-etat="cours"]');
+    assert.equal(await p.locator('[data-mode="commentaire"]').count(), 0, 'rien dans le rôle');
+    await p.evaluate(() => document.querySelector('.tour-etage[data-zone="td"] .tour-boite').click()); await p.waitForSelector('.cmt-arrets');
     assert.equal(await p.locator('.cmt-arret').count(), 8, 'huit arrêts');
     await p.tap('[data-cmt="mc"]');
     await p.waitForSelector('.cmt-qcm'); await p.tap('.option[data-ok="true"]'); await p.tap('.pied .cta');
@@ -1241,6 +1243,9 @@ async function execGroupe1(b, PORT, erreurs) {
     await p.tap('.pied .cta'); await p.waitForSelector('.resultats');
     const s = await p.evaluate(() => window.__app.etat().commentaires.mc);
     assert.equal(s.niveau, 1, 'l’arrêt monte d’un niveau'); assert.equal(s.seances, 1);
+    // Les huit au niveau « Maîtrisé » : la chambre bonus est validée et s'allume.
+    await p.evaluate(() => { const e = window.__app.etat(); for (const id of ['perreux', 'americains', 'mc', 'tende', 'gip', 'airfrance', 'fnvsa', 'fas']) e.commentaires[id] = { niveau: 2, seances: 3, scores: {} }; window.__app.aller('carte'); });
+    await p.waitForSelector('.tour-etage.allumage[data-zone="td"][data-etat="gagnee"]');
     await c.close();
     log('commentaires ok');
   }
