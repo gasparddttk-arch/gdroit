@@ -189,6 +189,17 @@ export function reagir(score) {
   });
 }
 
+// Pendant l'épreuve : Lexou passe une tête par le bord de l'écran, une seconde et demie, sans rien bloquer.
+export function coucou(pose, texte) {
+  if (!effets()) return;
+  document.querySelector('.coucou')?.remove();
+  const v = h('div', { class: 'coucou', role: 'status', 'aria-hidden': 'false' }, h('p', { class: 'bulle' }, texte), chouette(pose, { taille: 92 }));
+  document.body.append(v);
+  const vite = modeTest() && !new URLSearchParams(location.search).has('lent');
+  setTimeout(() => v.classList.add('part'), vite ? 60 : 1500);
+  setTimeout(() => v.remove(), vite ? 120 : 1900);
+}
+
 // Pluie de plumes pour les grandes victoires et les chambres ouvertes.
 export function plumes(n = 18) {
   if (!effets()) return;
