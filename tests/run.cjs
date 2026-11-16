@@ -1205,6 +1205,46 @@ async function execGroupe1(b, PORT, erreurs) {
     log('fiche parcours ok');
   }
 
+  if (matchSeul('commentaires')) {
+    const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
+    const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
+    await p.goto(URLB + '?test'); await p.waitForSelector('.tribune');
+    // Réservé au droit administratif, équipe 1.
+    await p.evaluate(() => { const e = window.__app.etat(); e.matiere = 'admin'; e.equipe = 2; window.__app.aller('role'); });
+    await p.waitForSelector('.role'); assert.equal(await p.locator('[data-mode="commentaire"]').count(), 0, 'pas en équipe 2');
+    await p.evaluate(() => { const e = window.__app.etat(); e.equipe = 1; e.reglages.bullesVues = { commentaire: true }; window.__app.aller('role'); });
+    await p.tap('[data-mode="commentaire"]'); await p.waitForSelector('.cmt-arrets');
+    assert.equal(await p.locator('.cmt-arret').count(), 8, 'huit arrêts');
+    await p.tap('[data-cmt="mc"]');
+    await p.waitForSelector('.cmt-qcm'); await p.tap('.option[data-ok="true"]'); await p.tap('.pied .cta');
+    await p.waitForSelector('.cmt-qcm .option'); await p.tap('.option[data-ok="true"]'); await p.tap('.pied .cta');
+    await p.waitForSelector('.cmt-trous');
+    for (const m of ['décret du Président', 'conseil des ministres', 'l’avait prévu', 'incompétence']) {
+      // les mots se replacent dans l'ordre du texte
+      await p.locator('.cmt-reserve .cmt-morceau', { hasText: m }).first().tap();
+    }
+    await p.tap('.pied .cta'); await p.tap('.pied .cta');
+    await p.waitForSelector('.cmt-ligne');
+    const n = await p.locator('.cmt-reserve .cmt-morceau').count();
+    for (let i = 0; i < n; i++) await p.tap(`.cmt-reserve .cmt-morceau[data-i="${i}"]`);
+    await p.tap('.pied .cta'); await p.waitForSelector('.cmt-corrige.juste'); await p.tap('.pied .cta');
+    await p.waitForSelector('.cmt-plan');
+    for (const t of ['Un décret présidentiel par sa seule délibération en conseil des ministres', 'L’application de la jurisprudence Meyet', 'Le principe du parallélisme des compétences', 'L’incompétence du Premier ministre faute d’habilitation', 'La faculté d’autoriser la modification par décret simple (Collas)', 'L’absence d’autorisation dans le décret de 1991']) await p.locator('.cmt-reserve .cmt-morceau', { hasText: t }).first().tap();
+    await p.tap('.pied .cta'); assert.equal(await p.locator('.cmt-plan li.juste').count(), 6, 'plan exact');
+    await p.tap('.pied .cta');
+    await p.waitForSelector('.cmt-champs');
+    const modeles = ['Le Premier ministre peut-il modifier par décret simple un décret délibéré en conseil des ministres alors que cette délibération n’était pas obligatoire ?', 'La délibération en conseil des ministres suffit-elle à soustraire un décret à la compétence du Premier ministre ?', 'Un décret présidentiel par sa seule délibération en conseil des ministres', 'L’incompétence du Premier ministre faute d’habilitation'];
+    for (let i = 0; i < modeles.length; i++) await p.locator('.cmt-ecrit').nth(i).fill(modeles[i]);
+    await p.tap('.pied .cta'); await p.waitForSelector('.cmt-bilan');
+    assert.equal(await p.locator('.cmt-bilan.juste').count(), 4, 'restitution exacte reconnue');
+    await debordement(p, 'commentaire');
+    await p.tap('.pied .cta'); await p.waitForSelector('.resultats');
+    const s = await p.evaluate(() => window.__app.etat().commentaires.mc);
+    assert.equal(s.niveau, 1, 'l’arrêt monte d’un niveau'); assert.equal(s.seances, 1);
+    await c.close();
+    log('commentaires ok');
+  }
+
   if (matchSeul('fenetres clavier')) {
     const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
     const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
