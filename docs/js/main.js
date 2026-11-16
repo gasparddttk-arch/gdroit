@@ -708,7 +708,6 @@ function ecranRole() {
   montrer(barreHaut(), retourPalais(), h('section', { class: 'role' }, h('h1', {}, 'Le rôle'),
     h('p', { class: 'page-sous' }, 'Choisis ton exercice.'),
     ligneEntree('express', 'prorogation', 'Trois minutes', 'Trois épreuves rapides', lancerExpress, 0),
-    commentairesDispo() ? ligneEntree('commentaire', 'plan', 'Commentaires d’arrêt', 'De l’affaire au plan, jusqu’à tout réécrire de mémoire', ecranCommentaires, lignes.length * 2.2 + 2.2) : null,
     lignes, casL1, blocDunk()));
 }
 
@@ -718,11 +717,17 @@ function lancerCommentaire(c) {
   lancer({ type: 'mode', mode: 'commentaire', titre: `Commentaire : ${c.nom}`, rounds: roundsCommentaire(c.id) });
 }
 const NIVEAUX_CMT = ['À découvrir', 'Reconnu', 'Maîtrisé', 'Restitué'];
+const ZONE_TD = { id: 'td', titre: 'Évaluation TD : commentaires d’arrêt', bonus: true, td: true };
+function progressionTD() {
+  const niveaux = COMMENTAIRES.map((c) => suiviCommentaire(c.id).niveau);
+  return { acquis: niveaux.filter((n) => n >= 2).length, total: niveaux.length, parfaite: niveaux.every((n) => n >= 3) };
+}
+const etatTD = () => { const p = progressionTD(); return p.parfaite ? 'parfaite' : p.acquis === p.total ? 'gagnee' : 'cours'; };
 function ecranCommentaires() {
   const prio = arretPrioritaire();
-  montrer(barreHaut(), h('button', { class: 'bouton-matiere', onClick: () => { son('retour'); fixerSens('arriere'); aller('role'); } }, icone('retour', 18), 'Le rôle'),
-    h('section', { class: 'role cmt-liste' }, h('h1', {}, 'Commentaires d’arrêt'),
-      h('p', { class: 'page-sous' }, 'Pour chaque arrêt : l’affaire, le problème de droit, la solution, la problématique, le plan, puis tout réécrire de mémoire. Chaque séance réussie fait monter l’arrêt d’un niveau, et l’aide diminue.'),
+  montrer(barreHaut(), h('button', { class: 'bouton-matiere', onClick: () => { son('retour'); fixerSens('arriere'); aller('carte'); } }, icone('retour', 18), 'Les chambres'),
+    h('section', { class: 'role cmt-liste' }, h('p', { class: 'surtitre' }, 'Chambre bonus'), h('h1', {}, 'Évaluation TD'),
+      h('p', { class: 'page-sous' }, 'Huit commentaires d’arrêt. Pour chacun : l’affaire, le problème de droit, la solution, la problématique, le plan, puis tout réécrire de mémoire. Une séance réussie fait monter l’arrêt d’un niveau. La salle est validée quand les huit sont au moins « Maîtrisé ».'),
       h('button', { class: 'bouton-or', 'data-cmt-prio': '', onClick: () => lancerCommentaire(prio) }, `Commencer par ${prio.nom}`),
       h('ul', { class: 'cmt-arrets' }, COMMENTAIRES.map((c) => {
         const s = suiviCommentaire(c.id);
@@ -1310,6 +1315,7 @@ function carteListe() {
   montrer(barreHaut(), h('section', { class: 'page page-chambres' },
     h('div', { class: 'chambres-tete' }, h('h1', {}, 'Chambres'), h('span', {}, `${audiences} audience${audiences > 1 ? 's' : ''} sur ${parcours.length}`)),
     h('button', { class: 'bouton-lien vers-tour', 'data-vers-tour': '', onClick: () => changerVueChambres('tour') }, 'Voir la tour'),
+    commentairesDispo() ? h('button', { class: 'bouton-fantome vers-td', 'data-vers-td': '', onClick: () => ecranCommentaires() }, `Chambre bonus : évaluation TD (${progressionTD().acquis} sur 8)`) : null,
     h('p', { class: 'page-sous' }, estConstit() ? `${matiereDe(etat.matiere).nom}, ${ETIQUETTE_CONSTIT}` : estIntro() ? matiereDe(etat.matiere).nom : `${matiereDe(etat.matiere).nom}, équipe ${etat.equipe}`), plan));
 }
 
@@ -1337,29 +1343,31 @@ function phraseTour(etatE, z, p) {
 function tourPalais() {
   const ouvertes = zonesOuvertes(ix);
   const gagnees = M().zones.gagnees; const parfaites = M().zones.parfaites || [];
-  const zones = ix.zones;
-  const n = zones.length;
-  const parcours = zones.filter((z) => !z.bonus && !z.travaux);
+  const n = ix.zones.length;
+  const td = commentairesDispo();
+  const zones = td ? [ZONE_TD, ...ix.zones] : ix.zones;
+  const parcours = ix.zones.filter((z) => !z.bonus && !z.travaux);
   const enCours = (etat.reglages.toutOuvert ? parcours.find((z) => !gagnees.includes(z.id)) : [...parcours].reverse().find((z) => ouvertes.includes(z.id) && !gagnees.includes(z.id)))?.id;
   // Les salles gagnées depuis la dernière visite s'allument sous les yeux.
   const vues = (etat.reglages.tourVue ||= {})[etat.matiere] || null;
-  const nouvelles = vues ? gagnees.filter((id) => !vues.includes(id)) : [];
-  etat.reglages.tourVue[etat.matiere] = [...gagnees];
+  const gagneesVues = td && etatTD() !== 'cours' ? [...gagnees, 'td'] : gagnees;
+  const nouvelles = vues ? gagneesVues.filter((id) => !vues.includes(id)) : [];
+  etat.reglages.tourVue[etat.matiere] = [...gagneesVues];
   if (!vues || nouvelles.length) sauver();
   let courant = Math.max(0, zones.findIndex((z) => z.id === (nouvelles[nouvelles.length - 1] ?? enCours)));
   if (courant < 0) courant = 0;
 
   const etages = zones.map((z, i) => {
-    const piece = pieceDe(i, n);
-    const p = progressionZone(z.id);
-    const e = etatEtage(z, ouvertes, gagnees, parfaites);
+    const piece = z.td ? 'delibere' : pieceDe(i - (td ? 1 : 0), n);
+    const p = z.td ? progressionTD() : progressionZone(z.id);
+    const e = z.td ? etatTD() : etatEtage(z, ouvertes, gagnees, parfaites);
     const part = p.total ? p.acquis / p.total : 0;
     const lampes = (LAMPES[piece] || []).map(([x, y], k) => h('span', { class: 'tour-lampe', style: `left:${x * 100}%;top:${y * 100}%;--d:${(0.15 + k * 0.35).toFixed(2)}s` }, h('i')));
     const effets = (EFFETS[piece] || []).map(([type, x, y]) => h('span', { class: `tour-${type}`, style: `left:${x}%;top:${y}%` }, type === 'vapeur' ? [h('i'), h('i'), h('i')] : null));
     const poussieres = e === 'parfaite' ? h('span', { class: 'tour-poussieres' }, Array.from({ length: 8 }, (_, k) => h('i', { style: `left:${10 + k * 11}%;top:${30 + (k * 37) % 45}%;animation-delay:${(k * 0.7).toFixed(1)}s` }))) : null;
     const img = (cls, src) => h('img', { class: cls, src, alt: '', draggable: 'false', loading: Math.abs(i - courant) <= 1 ? 'eager' : 'lazy', decoding: 'async', onError: (ev) => { ev.target.hidden = true; } });
     return h('div', { class: `tour-etage${nouvelles.includes(z.id) ? ' allumage' : ''}`, 'data-etat': e, 'data-zone': z.id, style: `z-index:${10 + i};--p:${part.toFixed(3)}` },
-      h('button', { class: 'tour-boite', 'aria-label': `Chambre ${z.id}, ${z.titre}`, onClick: () => { son('tap'); if (e === 'fermee') chambreFermee(z); else if (e !== 'travaux') chambre(z.id); } },
+      h('button', { class: 'tour-boite', 'aria-label': z.td ? `Chambre bonus, ${z.titre}` : `Chambre ${z.id}, ${z.titre}`, onClick: () => { son('tap'); if (z.td) ecranCommentaires(); else if (e === 'fermee') chambreFermee(z); else if (e !== 'travaux') chambre(z.id); } },
         img('tour-vide', `${IMG_TOUR}vide.webp`), img('tour-plan', `${IMG_TOUR}${piece}-plan.webp`), img('tour-pleine', `${IMG_TOUR}${piece}.webp`),
         h('span', { class: 'tour-halo' }), lampes, effets, poussieres, h('span', { class: 'tour-eclat' }),
         e === 'fermee' || e === 'travaux' ? h('span', { class: 'tour-cadenas' }, icone(e === 'travaux' ? 'travaux' : 'cadenas', 40)) : null));
@@ -1385,7 +1393,10 @@ function tourPalais() {
   const basculer = (ouvrir = !tiroir.classList.contains('ouvert')) => { tiroir.classList.toggle('ouvert', ouvrir); tiroir.querySelector('.tour-poignee').setAttribute('aria-expanded', String(ouvrir)); };
   let poseLexou = '';
   function remplir() {
-    const z = zones[courant]; const e = etatEtage(z, ouvertes, gagnees, parfaites); const p = progressionZone(z.id);
+    const z = zones[courant];
+    if (z.td) return remplirTD();
+    liste.classList.remove('une-colonne');
+    const e = etatEtage(z, ouvertes, gagnees, parfaites); const p = progressionZone(z.id);
     etiquette.textContent = z.bonus ? 'Chambre bonus' : `Chambre ${z.id}`;
     titre.textContent = z.titre;
     barre.style.width = `${e === 'gagnee' || e === 'parfaite' ? 100 : p.total ? (p.acquis / p.total) * 100 : 0}%`;
@@ -1404,6 +1415,28 @@ function tourPalais() {
     if (nouvellePose !== poseLexou) { poseLexou = nouvellePose; lexou.replaceChildren(chouette(nouvellePose, { taille: 84 })); }
     bulle.classList.add('change');
     setTimeout(() => { bulle.textContent = phraseTour(e, z, p); bulle.classList.remove('change'); }, 150);
+    etages.forEach((el, i) => el.classList.toggle('courant', i === courant));
+  }
+  // La chambre bonus : les huit commentaires d'arrêt, validée quand tous sont au moins « Maîtrisé ».
+  function remplirTD() {
+    const p = progressionTD(); const e = etatTD();
+    etiquette.textContent = 'Chambre bonus';
+    titre.textContent = ZONE_TD.titre;
+    barre.style.width = `${(p.acquis / p.total) * 100}%`;
+    compte.textContent = e === 'parfaite' ? 'Les huit restitués de mémoire' : e === 'gagnee' ? 'Salle validée' : `${p.acquis} arrêt${p.acquis > 1 ? 's' : ''} maîtrisé${p.acquis > 1 ? 's' : ''} sur ${p.total}`;
+    pct.textContent = e === 'cours' ? `${Math.round((p.acquis / p.total) * 100)} %` : '';
+    const prio = arretPrioritaire();
+    actions.replaceChildren(h('button', { class: 'bouton-or', 'data-reviser-td': '', onClick: () => lancerCommentaire(prio) }, 'Réviser cette chambre'),
+      h('button', { class: 'bouton-fantome', onClick: () => ecranCommentaires() }, 'Les huit'));
+    liste.classList.add('une-colonne');
+    liste.replaceChildren(...COMMENTAIRES.map((c) => { const s = suiviCommentaire(c.id); return h('li', {}, h('button', { class: 'cmt-arret', onClick: () => lancerCommentaire(c) },
+      h('span', { class: 'cmt-arret-txt' }, h('b', {}, c.nom), h('small', {}, c.ref)),
+      h('span', { class: 'cmt-niveau' }, h('span', { class: 'cmt-points' }, [0, 1, 2].map((k) => h('i', { class: k < s.niveau ? 'plein' : '' }))), h('small', {}, NIVEAUX_CMT[s.niveau])))); }));
+    const pose = e === 'cours' ? 'lunettes' : 'clin';
+    if (pose !== poseLexou) { poseLexou = pose; lexou.replaceChildren(chouette(pose, { taille: 84 })); }
+    bulle.classList.add('change');
+    const reste = p.total - p.acquis;
+    setTimeout(() => { bulle.textContent = e === 'parfaite' ? 'Tout restitué de mémoire. Prêt pour le TD.' : e === 'gagnee' ? 'Salle validée. Reste à tout restituer de mémoire.' : `Encore ${pluriel(reste, 'arrêt')} à maîtriser pour valider la salle.`; bulle.classList.remove('change'); }, 150);
     etages.forEach((el, i) => el.classList.toggle('courant', i === courant));
   }
   let attente;
