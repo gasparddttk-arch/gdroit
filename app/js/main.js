@@ -727,7 +727,7 @@ function ecranCommentaires() {
   const prio = arretPrioritaire();
   montrer(barreHaut(), h('button', { class: 'bouton-matiere', onClick: () => { son('retour'); fixerSens('arriere'); aller('carte'); } }, icone('retour', 18), 'Les chambres'),
     h('section', { class: 'role cmt-liste' }, h('p', { class: 'surtitre' }, 'Chambre bonus'), h('h1', {}, 'Évaluation TD'),
-      h('p', { class: 'page-sous' }, 'Huit commentaires d’arrêt. Pour chacun : l’affaire, le problème de droit, la solution, la problématique, le plan, puis tout réécrire de mémoire. Une séance réussie fait monter l’arrêt d’un niveau. La salle est validée quand les huit sont au moins « Maîtrisé ».'),
+      h('p', { class: 'page-sous' }, `${COMMENTAIRES.length} commentaires d’arrêt. Pour chacun : l’affaire, le problème de droit, la solution, la problématique, le plan, puis tout réécrire de mémoire. Une séance réussie fait monter l’arrêt d’un niveau. La salle est validée quand tous sont au moins « Maîtrisé ».`),
       h('button', { class: 'bouton-or', 'data-cmt-prio': '', onClick: () => lancerCommentaire(prio) }, `Commencer par ${prio.nom}`),
       h('ul', { class: 'cmt-arrets' }, COMMENTAIRES.map((c) => {
         const s = suiviCommentaire(c.id);
@@ -1315,7 +1315,7 @@ function carteListe() {
   montrer(barreHaut(), h('section', { class: 'page page-chambres' },
     h('div', { class: 'chambres-tete' }, h('h1', {}, 'Chambres'), h('span', {}, `${audiences} audience${audiences > 1 ? 's' : ''} sur ${parcours.length}`)),
     h('button', { class: 'bouton-lien vers-tour', 'data-vers-tour': '', onClick: () => changerVueChambres('tour') }, 'Voir la tour'),
-    commentairesDispo() ? h('button', { class: 'bouton-fantome vers-td', 'data-vers-td': '', onClick: () => ecranCommentaires() }, `Chambre bonus : évaluation TD (${progressionTD().acquis} sur 8)`) : null,
+    commentairesDispo() ? h('button', { class: 'bouton-fantome vers-td', 'data-vers-td': '', onClick: () => ecranCommentaires() }, `Chambre bonus : évaluation TD (${progressionTD().acquis} sur ${COMMENTAIRES.length})`) : null,
     h('p', { class: 'page-sous' }, estConstit() ? `${matiereDe(etat.matiere).nom}, ${ETIQUETTE_CONSTIT}` : estIntro() ? matiereDe(etat.matiere).nom : `${matiereDe(etat.matiere).nom}, équipe ${etat.equipe}`), plan));
 }
 
@@ -1417,17 +1417,17 @@ function tourPalais() {
     setTimeout(() => { bulle.textContent = phraseTour(e, z, p); bulle.classList.remove('change'); }, 150);
     etages.forEach((el, i) => el.classList.toggle('courant', i === courant));
   }
-  // La chambre bonus : les huit commentaires d'arrêt, validée quand tous sont au moins « Maîtrisé ».
+  // La chambre bonus : les commentaires d'arrêt du TD, validée quand tous sont au moins « Maîtrisé ».
   function remplirTD() {
     const p = progressionTD(); const e = etatTD();
     etiquette.textContent = 'Chambre bonus';
     titre.textContent = ZONE_TD.titre;
     barre.style.width = `${(p.acquis / p.total) * 100}%`;
-    compte.textContent = e === 'parfaite' ? 'Les huit restitués de mémoire' : e === 'gagnee' ? 'Salle validée' : `${p.acquis} arrêt${p.acquis > 1 ? 's' : ''} maîtrisé${p.acquis > 1 ? 's' : ''} sur ${p.total}`;
+    compte.textContent = e === 'parfaite' ? 'Tous restitués de mémoire' : e === 'gagnee' ? 'Salle validée' : `${p.acquis} arrêt${p.acquis > 1 ? 's' : ''} maîtrisé${p.acquis > 1 ? 's' : ''} sur ${p.total}`;
     pct.textContent = e === 'cours' ? `${Math.round((p.acquis / p.total) * 100)} %` : '';
     const prio = arretPrioritaire();
     actions.replaceChildren(h('button', { class: 'bouton-or', 'data-reviser-td': '', onClick: () => lancerCommentaire(prio) }, 'Réviser cette chambre'),
-      h('button', { class: 'bouton-fantome', onClick: () => ecranCommentaires() }, 'Les huit'));
+      h('button', { class: 'bouton-fantome', onClick: () => ecranCommentaires() }, 'La liste'));
     liste.classList.add('une-colonne');
     liste.replaceChildren(...COMMENTAIRES.map((c) => { const s = suiviCommentaire(c.id); return h('li', {}, h('button', { class: 'cmt-arret', onClick: () => lancerCommentaire(c) },
       h('span', { class: 'cmt-arret-txt' }, h('b', {}, c.nom), h('small', {}, c.ref)),
