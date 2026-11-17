@@ -867,6 +867,15 @@ async function execGroupe1(b, PORT, erreurs) {
         }
       }
 
+      // Révision des arrêts (obligations) : aucune production non plus.
+      if (m.mat === 'oblig') {
+        const { roundsArrets } = await import('../app/js/engine.js');
+        for (let i = 0; i < 200; i++) {
+          const z = zones[i % zones.length];
+          for (const r of roundsArrets(ix, z, [], zones.filter((x) => x < z), rng) || []) assert(!estProduction(r), `Production dans la révision des arrêts : ${r.type}`);
+        }
+      }
+
       // 200 audiences : exactement une production, jamais en premier
       for (let i = 0; i < 200; i++) {
         const z = zones[i % zones.length];
@@ -1183,6 +1192,30 @@ async function execGroupe1(b, PORT, erreurs) {
     await p.tap('[data-vers-tour]'); await p.waitForSelector('.tour-ecran');
     await c.close();
     log('tour ok');
+  }
+
+  if (matchSeul('arrets chambre')) {
+    // Obligations : la chambre se révise en deux parties, ses arrêts et ses cas pratiques.
+    const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
+    const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
+    for (const eq of [1, 2]) {
+      await p.goto(`${URLB}?test&matiere=oblig&equipe=${eq}`); await p.waitForSelector('.tribune');
+      await p.evaluate(() => window.__app.ouvrirMatiere('oblig')); await p.waitForSelector('.tribune');
+      await p.evaluate(() => { const e = window.__app.etat().oblig; e.zones.ouvertes = [1, 2, 3, 4]; e.zones.gagnees = [1, 2, 3]; window.__app.aller('carte'); });
+      await p.waitForSelector('.tour-ecran');
+      await p.waitForFunction(() => document.querySelector('.tour-tiroir .tour-etiquette').textContent === 'Chambre 4');
+      await p.waitForSelector('.tour-actions.deux [data-reviser-arrets]');
+      assert.equal(await p.locator('.tour-actions [data-reviser]').innerText(), 'Cas pratiques');
+      await p.waitForTimeout(400); await p.screenshot({ path: `${CAP}arrets-chambre-${eq}.png` });
+      await debordement(p, 'tiroir obligations');
+      await p.tap('[data-reviser-arrets]'); await p.waitForSelector('.scene');
+      const types = await p.evaluate(() => window.__app.etat().oblig.enCours.rounds.map((r) => r.type));
+      assert.deepEqual(types, ['puzzle', 'paires', 'puzzle'], 'arrêts : une fiche, les apports, une autre fiche');
+      await jouer(p, { capture: `arrets-${eq}`, auHasard: true });
+      await p.waitForSelector('.resultats');
+    }
+    await c.close();
+    log('arrets chambre ok');
   }
 
   if (matchSeul('fiche parcours')) {

@@ -95,18 +95,20 @@ export function optionsProbleme(ix, a, rng = Math.random) {
 // Blocs du puzzle : les quatre vraies pièces et deux pièces venues d'arrêts voisins.
 export const CHAMPS = [['f', 'Faits'], ['pr', 'Procédure'], ['s', 'Solution'], ['po', 'Portée']];
 export function blocsPuzzle(ix, a, rng = Math.random) {
-  const vrais = CHAMPS.map(([k, l]) => ({ k, l, t: a[k], de: a.id }));
+  // En obligations, pas de rubrique « Procédure » : la fiche se reconstitue en trois pièces.
+  const champsA = CHAMPS.filter(([k]) => a[k]);
+  const vrais = champsA.map(([k, l]) => ({ k, l, t: a[k], de: a.id }));
   const { jum, zone } = voisins(ix, a);
   const cand = [...jum, ...melange(zone, rng)].filter((b) => !b.nf);
   const pieges = [];
   const nombre = 1 + Math.floor(rng() * 3);
-  const champs = melange(CHAMPS.map(([k]) => k), rng);
+  const champs = melange(champsA.map(([k]) => k), rng);
   for (const k of champs) {
     if (pieges.length === nombre) break;
     const pool = cand.filter((b) => b[k] && !pieges.some((p) => p.de === b.id)).slice(0, 6).map((b) => ({ t: b[k], k, de: b.id }));
     if (pool.length) pieges.push(prochesEnLongueur(a[k], pool, 1, rng)[0]);
   }
-  return { slots: CHAMPS.map(([k, l]) => ({ k, l })), blocs: melange([...vrais, ...pieges], rng) };
+  return { slots: champsA.map(([k, l]) => ({ k, l })), blocs: melange([...vrais, ...pieges], rng) };
 }
 
 export function optionsArret(ix, a, rng = Math.random) {
@@ -122,10 +124,10 @@ export function grillePaires(ix, zones, rng = Math.random, taille = 4, variante 
   const prioritaire = dus.find((id) => zoneOk(ix.parId.get(id)));
   let base = [];
   if (variante === 'jumeaux' || variante === 'apport') {
-    const f = prioritaire ? (ix.famillesDe.get(prioritaire) || []).find((x) => familles.includes(x)) : null;
+    const f = prioritaire ? (ix.famillesDe?.get(prioritaire) || []).find((x) => familles.includes(x)) : null;
     const fam = f || choix(familles.length ? familles : ix.familles, rng);
-    base = melange(fam.m.map((m) => m.id).filter((id) => zoneOk(ix.parId.get(id))), rng);
-    if (variante === 'jumeaux') {
+    if (fam) base = melange(fam.m.map((m) => m.id).filter((id) => zoneOk(ix.parId.get(id))), rng);
+    if (variante === 'jumeaux' && fam) {
       const lignes = base.slice(0, taille).map((id) => ({ id, nom: ix.parId.get(id).nom, an: ix.parId.get(id).an, t: fam.m.find((m) => m.id === id).k }));
       return { variante, famille: fam, lignes };
     }
@@ -366,6 +368,24 @@ function tirerOblig(ix, type, zones, dus, rng, deja, entiere = false) {
     case 'frise': return { type: t, ...roundFrise(pris, rng) };
     default: return { type: 'plan', ...roundPlan(ix, pris, rng) };
   }
+}
+
+// RÉVISER LES ARRÊTS D'UNE CHAMBRE (obligations) -----------------------------------
+// Reconstituer la fiche d'un arrêt, relier arrêts et apports, puis une seconde fiche.
+// Pas d'écrit libre : comme toute révision, elle n'a pas d'épreuve de production.
+// Une chambre qui a peu d'arrêts emprunte ceux des chambres déjà ouvertes pour les paires.
+export const arretsDeZone = (ix, z) => (ix.arrets || []).filter((a) => !a.nf && a.zones.includes(z));
+export function roundsArrets(ix, z, dus = [], ouvertes = [], rng = Math.random) {
+  const ici = arretsDeZone(ix, z);
+  if (!ici.length) return null;
+  const rang = (a) => { const i = dus.indexOf(a.id); return i < 0 ? 1e6 : i; };
+  const fiches = melange(ici.filter((a) => a.f && a.s && a.po && a.q), rng).sort((a, b) => rang(a) - rang(b));
+  const puzzle = (a) => ({ type: 'puzzle', id: a.id, ...blocsPuzzle(ix, a, rng), problemes: optionsProbleme(ix, a, rng), noms: optionsArret(ix, a, rng).map((x) => ({ id: x.id, nom: x.court, an: x.an })) });
+  const zonesPaires = ici.length >= 3 ? [z] : [...new Set([z, ...ouvertes])];
+  const nPaires = (ix.arrets || []).filter((a) => a.zones.some((x) => zonesPaires.includes(x))).length;
+  const paires = nPaires >= 3 ? { type: 'paires', grille: grillePaires(ix, zonesPaires, rng, Math.min(4, nPaires), 'apport', dus.filter((id) => id !== fiches[0]?.id)) } : null;
+  const rounds = [fiches[0] && puzzle(fiches[0]), paires, fiches[1] && puzzle(fiches[1])].filter(Boolean);
+  return rounds.length >= 2 ? rounds : null;
 }
 
 // DUNK SHOT ------------------------------------------------------------------------

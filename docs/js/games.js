@@ -257,10 +257,11 @@ export async function jouerPuzzle(zone, ctx, round, ix) {
       !ok ? h('p', { class: 'verif-pourquoi' }, origine ? `Cette pièce vient de ${origine.court}, ${origine.an}.` : 'Bonne affaire, mauvaise rubrique.') : null,
       !ok ? h('p', { class: 'verif-bon' }, a[s.k]) : null);
   });
-  ctx.sonner(bons === 4);
+  const n = round.slots.length;
+  ctx.sonner(bons === n);
   await new Promise((suite) => {
     zone.replaceChildren(h('div', { class: 'ecran puzzle' },
-      h('h2', { class: 'question' }, `${bons} pièce${bons > 1 ? 's' : ''} sur 4 en place`),
+      h('h2', { class: 'question' }, `${bons} pièce${bons > 1 ? 's' : ''} sur ${n} en place`),
       h('div', { class: 'verifs' }, lignes),
       barrePied(continuer('Passer au problème de droit', suite))));
     window.scrollTo(0, 0);
@@ -268,9 +269,9 @@ export async function jouerPuzzle(zone, ctx, round, ix) {
   const r1 = await qcm(zone, ctx, { surtitre: 'Vu ces faits et cette solution', question: 'Quel était le problème de droit\u00a0?', options: round.problemes.map((o) => ({ ...o })), pourquoiBon: 'C’est la question que l’arrêt tranche.', indice: a.h ? `${a.h.split('. ')[0]}.` : undefined });
   const r2 = await qcm(zone, ctx, { surtitre: 'Dernière pièce', question: 'De quel arrêt s’agit-il\u00a0?', options: round.noms.map((n) => ({ t: `${n.nom}, ${n.an}`, ok: n.id === a.id, id: n.id })), pourquoiBon: a.ap[a.zones[0]] });
   if (!r2.ok) ctx.noter(a.id, false, r2.choix.id);
-  const ok = bons === 4 && r1.ok && r2.ok;
-  ctx.noter(a.id, ok || (bons >= 3 && r2.ok));
-  const score = (bons / 4) * 0.5 + (r1.ok ? 0.3 : 0) + (r2.ok ? 0.2 : 0);
+  const ok = bons === n && r1.ok && r2.ok;
+  ctx.noter(a.id, ok || (bons >= n - 1 && r2.ok));
+  const score = (bons / n) * 0.5 + (r1.ok ? 0.3 : 0) + (r2.ok ? 0.2 : 0);
   ctx.gain(Math.round(30 * score) + (ok ? 10 : 0), Math.round(6 * score) + (ok ? 2 : 0));
   finEpreuve(zone, ctx, { score, parfait: ok }, revelation(a, ix));
 }

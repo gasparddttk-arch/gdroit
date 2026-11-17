@@ -11,7 +11,7 @@ import { remplacerEtat, choisirAnnee, ajouterSemaine, gagnerAppel, erreursOuvert
   zonesOuvertes, zonesDuJour, ouvrirSuivante, ouvrirApres, evaluerTrophees, BOUTIQUE, THEMES, INSIGNES, DECORS, TROPHEES, TITRES_CARTE, fixerDecalage, rembourse,
   MATIERES, matiereDe, RANGS_GENERAL, PLAFOND_JOUR, PIECES_EPREUVE, PRIX_DUNK, gainsDuJour, crediter, sauverMaintenant
 } from './state.js';
-import { indexer, questionsDunk, composerDefi, composerBoss, composerRevision, tirerRound, jumeaux, melange, typesIntro, roundPlan, tirerAtelier } from './engine.js';
+import { indexer, questionsDunk, composerDefi, composerBoss, composerRevision, tirerRound, jumeaux, melange, typesIntro, roundPlan, tirerAtelier, roundsArrets } from './engine.js';
 import { JEUX, NOMS_MODES, NOMS_MODES_OBLIG, NOMS_MODES_INTRO, NOMS_MODES_CONSTIT, continuer, qcm } from './games.js';
 import { jouerPouvoirs, jouerNuancier, jouerPlume } from './jeux-constit.js';
 import { jouerAtelier } from './atelier.js';
@@ -1405,10 +1405,14 @@ function tourPalais() {
     pct.textContent = !finie && p.total ? `${Math.round((p.acquis / p.total) * 100)} %` : '';
     const ouvert = e !== 'fermee' && e !== 'travaux';
     const fiches = ix.cartes.filter((a) => a.zones.includes(z.id)).sort(ordreFiches);
+    const deux = ouvert && fiches.length && arretsRevisables(z.id);
+    actions.classList.toggle('deux', !!deux);
     actions.replaceChildren(
       e === 'fermee' ? h('button', { class: 'bouton-or', onClick: () => chambreFermee(z) }, 'Ouvrir cette chambre')
         : e === 'travaux' ? h('button', { class: 'bouton-or', disabled: true }, 'En travaux')
-          : fiches.length ? h('button', { class: 'bouton-or', 'data-reviser': '', onClick: () => reviserZone(z.id) }, 'Réviser cette chambre') : null,
+          : deux ? h('button', { class: 'bouton-or', 'data-reviser-arrets': '', onClick: () => reviserArrets(z.id) }, 'Arrêts')
+            : fiches.length ? h('button', { class: 'bouton-or', 'data-reviser': '', onClick: () => reviserZone(z.id) }, 'Réviser cette chambre') : null,
+      deux ? h('button', { class: 'bouton-or', 'data-reviser': '', onClick: () => reviserZone(z.id) }, 'Cas pratiques') : null,
       ouvert && !z.bonus ? h('button', { class: 'bouton-fantome', 'data-audience': '', onClick: () => lancerBoss(z.id) }, 'Audience') : null);
     liste.replaceChildren(...fiches.map(carteArret));
     const nouvellePose = e === 'gagnee' || e === 'parfaite' ? 'clin' : e === 'cours' ? 'debout' : 'reflexion';
@@ -1426,6 +1430,7 @@ function tourPalais() {
     compte.textContent = e === 'parfaite' ? 'Tous restitués de mémoire' : e === 'gagnee' ? 'Salle validée' : `${p.acquis} arrêt${p.acquis > 1 ? 's' : ''} maîtrisé${p.acquis > 1 ? 's' : ''} sur ${p.total}`;
     pct.textContent = e === 'cours' ? `${Math.round((p.acquis / p.total) * 100)} %` : '';
     const prio = arretPrioritaire();
+    actions.classList.remove('deux');
     actions.replaceChildren(h('button', { class: 'bouton-or', 'data-reviser-td': '', onClick: () => lancerCommentaire(prio) }, 'Réviser cette chambre'),
       h('button', { class: 'bouton-fantome', onClick: () => ecranCommentaires() }, 'La liste'));
     liste.classList.add('une-colonne');
@@ -1476,6 +1481,14 @@ function chambreFermee(z) {
   document.body.append(voile);
 }
 
+// Obligations : la chambre se révise en deux parties, ses arrêts d'un côté, les cas pratiques et exercices de l'autre.
+const arretsRevisables = (z) => estOblig() && !!roundsArrets(ix, z, [], [], () => 0.5);
+function reviserArrets(z) {
+  const ouvertes = zonesOuvertes(ix).filter((x) => x !== z);
+  const rounds = roundsArrets(ix, z, aRevoir(ix, [z]), ouvertes, Math.random);
+  if (!rounds) return reviserZone(z);
+  lancer({ type: 'zone', titre: 'Les arrêts de la chambre', zone: z, rounds });
+}
 function lancerBoss(z) { lancer({ type: 'boss', titre: 'Audience solennelle', zone: z, rounds: composerBoss(ix, z) }); }
 function reviserZone(z) {
   const dus = aRevoir(ix, [z]);
@@ -1489,7 +1502,7 @@ function reviserZone(z) {
   const pool = estOblig() ? ['cas', 'remede', 'frise'] : ['puzzle', 'juge', 'plan'];
   if ((ix.formules || []).some((f) => f.zones.includes(z))) pool.push('formule');
   const types = melange(pool, Math.random);
-  lancer({ type: 'zone', titre: 'Révision', zone: z, rounds: [base, types[0], base].map((t) => tirerRound(ix, t, [z], dus, Math.random, deja)) });
+  lancer({ type: 'zone', titre: estOblig() ? 'Cas pratiques et exercices' : 'Révision', zone: z, rounds: [base, types[0], base].map((t) => tirerRound(ix, t, [z], dus, Math.random, deja)) });
 }
 
 // Arrêts par date, articles par numéro.
@@ -1513,7 +1526,8 @@ function chambre(zid) {
     h('section', { class: 'page' }, h('h1', {}, z.titre), h('p', { class: 'page-sous' }, z.lieu),
       z.travaux ? h('p', { class: 'avis-travaux' }, icone('travaux', 20), liste.length ? 'En travaux : ce chapitre n’est pas encore arrivé au cours. Les exercices restent généraux, tirés du Code civil et des grands arrêts.' : 'En travaux : ce chapitre n’est pas encore arrivé au cours. Ses fiches et ses exercices arriveront avec lui.') : null,
       h('div', { class: 'actions gauche' },
-        liste.length ? h('button', { class: 'cta', onClick: () => reviserZone(zid) }, 'Réviser cette chambre') : null,
+        liste.length && arretsRevisables(zid) ? h('button', { class: 'cta', 'data-reviser-arrets': '', onClick: () => reviserArrets(zid) }, 'Réviser les arrêts') : null,
+        liste.length ? h('button', { class: arretsRevisables(zid) ? 'bouton-or' : 'cta', onClick: () => reviserZone(zid) }, arretsRevisables(zid) ? 'Cas pratiques et exercices' : 'Réviser cette chambre') : null,
         !z.bonus && !z.travaux ? h('button', { class: 'bouton-lien', onClick: () => lancerBoss(zid) }, M().zones.gagnees.includes(zid) ? 'Rejouer l’audience solennelle' : 'Audience solennelle : 6 épreuves, 3 vies, sans joker') : null),
       h('ul', { class: 'grille-cartes' }, liste.map(carteArret))));
 }

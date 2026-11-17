@@ -2113,6 +2113,8 @@ body:has(#onglets[hidden]) .clone-sortant {
 .tour-actions { display: grid; grid-auto-flow: column; grid-auto-columns: auto; grid-template-columns: 1fr; gap: 10px; align-items: center; }
 .tour-actions .bouton-or { width: 100%; padding-left: 10px; padding-right: 10px; }
 .tour-actions .bouton-fantome { white-space: nowrap; padding: 13px 14px; }
+.tour-actions.deux { grid-template-columns: 1fr 1fr; gap: 8px; }
+.tour-actions.deux .bouton-or { white-space: nowrap; }
 .tour-liste { margin-top: 14px; overflow-y: auto; flex: 1; display: none; }
 .tour-tiroir.ouvert .tour-liste { display: grid; }
 .tour-lexou { position: absolute; left: 4px; top: -76px; pointer-events: none; transition: opacity .25s; }
