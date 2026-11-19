@@ -603,11 +603,12 @@ export const introVide = (r) => !r
   || (r.type === 'tri' && (r.cartes || []).length < 4)
   || (r.type === 'scanner' && (r.textes || []).length < 2)
   || (r.type === 'nuancier' && (r.jetons || []).length < 3);
-// Tire l'épreuve ; si le contenu frais manque, la reprend en acceptant des notions déjà vues, sinon passe au mot.
+// Tire l'épreuve ; si le contenu frais manque, la reprend en acceptant des notions déjà vues,
+// sinon passe à un Memory (jamais au mot, qui est une production en L1 et fausserait l'audience).
 export function tirerIntroPlein(ix, type, zones, dus, rng = Math.random, deja = new Set()) {
   let r = tirerIntro(ix, type, zones, dus, rng, deja);
   if (introVide(r)) r = tirerIntro(ix, type, zones, dus, rng, new Set());
-  if (introVide(r)) r = tirerIntro(ix, 'mot', zones, dus, rng, deja);
+  if (introVide(r) && type !== 'memory') r = tirerIntro(ix, 'memory', zones, dus, rng, new Set());
   return r;
 }
 
@@ -763,9 +764,9 @@ export function composerBossIntro(ix, zone, rng = Math.random) {
   }
   const dispo = typesIntro(ix, [zone]);
   const poolRec = dispo.filter((t) => t !== 'plume' && t !== 'mot' && t !== 'formule');
-  // Une chambre pauvre en exercices (constitutionnel, chambre 1 : Memory seul) reçoit aussi le mot :
-  // cinq Memory d'affilée épuisaient les notions et laissaient des écrans vides.
-  const baseRec = poolRec.length >= 3 ? poolRec : [...new Set([...poolRec, 'mot', 'memory'])];
+  // Une chambre pauvre en exercices (constitutionnel, chambre 1 : Memory seul) tire plusieurs fois le même jeu :
+  // tirerIntroPlein reprend alors des notions déjà vues plutôt que de laisser un écran vide.
+  const baseRec = poolRec.length ? poolRec : ['memory'];
   const typesAutres = melange(baseRec, rng).slice(0, 5);
   while (typesAutres.length < 5) typesAutres.push(choix(baseRec, rng));
   const autres = typesAutres.map((t) => tirerIntroPlein(ix, t, [zone], [], rng, deja));
