@@ -811,6 +811,22 @@ async function execGroupe1(b, PORT, erreurs) {
   }
 
   // 14b. Production réservée aux examens et aux audiences
+  if (matchSeul('solennelle l1')) {
+    // L1 : aucune épreuve d'une audience solennelle, d'une révision ou d'un défi ne doit arriver vide.
+    const { indexer, composerBoss, composerRevision, composerDefiIntro, introVide, creerRng } = await import('../app/js/engine.js');
+    for (const [f, eq] of [['intro.json', 1], ['intro2.json', 2], ['constit.json', 1]]) {
+      const ix = indexer(JSON.parse(fs.readFileSync('docs/' + f)), eq);
+      const rng = creerRng(7);
+      for (const z of ix.zones.filter((x) => !x.travaux)) {
+        for (let i = 0; i < 150; i++) {
+          const seances = [composerBoss(ix, z.id, rng), composerRevision(ix, [z.id], [], rng), composerDefiIntro(ix, [z.id], [], rng)];
+          for (const r of seances.flat()) assert(!introVide(r), `${f} chambre ${z.id} : épreuve vide (${r?.type})`);
+        }
+      }
+    }
+    log('solennelle l1 ok');
+  }
+
   if (matchSeul('production')) {
     const { indexer, composerDefi, composerBoss, estProduction, creerRng, tirerRound, melange, typesIntro } = await import('../app/js/engine.js');
     const read = (f) => JSON.parse(fs.readFileSync('docs/' + f));

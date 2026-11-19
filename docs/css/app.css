@@ -42,6 +42,8 @@
   --ombre: rgba(0, 0, 0, .6);
 }
 /* Pastel jour : le Palais en plein jour, des cartes douces. */
+/* Thèmes clairs : interdit au mode sombre automatique d'Android de les assombrir. */
+[data-theme='pastel'], [data-theme='rose'] { color-scheme: only light; }
 [data-theme='pastel'] {
   --encre: #F4F1FA; --banc: #FFFFFF; --banc-fort: #ECE7F6; --bleu: #8FA6FF; --bleu-texte: #0D1640;
   --or: #FFB547; --or-1: #FFD08A; --or-2: #FFB547; --or-3: #E5992A; --or-ombre: #D98A12; --or-texte: #2A1700;

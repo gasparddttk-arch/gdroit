@@ -211,6 +211,9 @@ function appliquerTheme() {
   if (images.jeton) r.style.setProperty('--jeton-image', `url("${images.jeton}")`);
   else r.style.removeProperty('--jeton-image');
   document.querySelector('meta[name="theme-color"]').setAttribute('content', { rose: '#FFE3EA', pastel: '#F4F1FA', verre: '#060A1C' }[etat.theme] || '#0A0E22');
+  // Sur Android, le mode sombre automatique de Chrome ou de Samsung Internet assombrissait les thèmes clairs
+  // (pastel : fond noir, texte orangé). « only light » le lui interdit ; les thèmes sombres n'en ont pas besoin.
+  document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', ['rose', 'pastel'].includes(etat.theme) ? 'only light' : 'normal');
 }
 
 export function raccourcirGrade(nom) {

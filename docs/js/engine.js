@@ -456,7 +456,7 @@ export function tirerRound(ix, type, zones, dus, rng = Math.random, deja = new S
     if (r) return r;
     type = ix.matiere === 'oblig' ? 'qualif' : 'paires';
   }
-  if (estL1(ix)) return tirerIntro(ix, type, zones, dus, rng, deja);
+  if (estL1(ix)) return tirerIntroPlein(ix, type, zones, dus, rng, deja);
   if (ix.matiere === 'oblig') return tirerOblig(ix, type, zones, dus, rng, deja, entiere);
   if (type === 'atelier' && ix.ateliers?.length) return tirerAtelier(ix, zones, null, rng, deja);
   if (type === 'trous') { const r = roundTrous(ix, zones, dus, deja, rng); if (r) return r; type = 'paires'; }
@@ -595,6 +595,22 @@ export function composerBoss(ix, zone, rng = Math.random) {
   return [...autres.slice(0, pos), prodRound, ...autres.slice(pos)];
 }
 
+// Une épreuve L1 sans matière à jouer (Memory sans paires, Qui a dit ? sans citation…) affichait un écran vide.
+export const introVide = (r) => !r
+  || (r.type === 'memory' && (r.paires || []).length < 3)
+  || (r.type === 'quiadit' && !(r.tours || []).length)
+  || (r.type === 'rangement' && (r.pieces || []).length < 4)
+  || (r.type === 'tri' && (r.cartes || []).length < 4)
+  || (r.type === 'scanner' && (r.textes || []).length < 2)
+  || (r.type === 'nuancier' && (r.jetons || []).length < 3);
+// Tire l'épreuve ; si le contenu frais manque, la reprend en acceptant des notions déjà vues, sinon passe au mot.
+export function tirerIntroPlein(ix, type, zones, dus, rng = Math.random, deja = new Set()) {
+  let r = tirerIntro(ix, type, zones, dus, rng, deja);
+  if (introVide(r)) r = tirerIntro(ix, type, zones, dus, rng, new Set());
+  if (introVide(r)) r = tirerIntro(ix, 'mot', zones, dus, rng, deja);
+  return r;
+}
+
 // L1, INTRODUCTION AU DROIT ----------------------------------------------------------------
 // Les exercices qu'une chambre peut nourrir. Le tri vient des chambres 1 et 2, le scanner de la 1,
 // le rangement de la 4, la frise des 5 et 6 ; le mot, Memory et Qui a dit ? puisent partout.
@@ -728,7 +744,7 @@ export function composerDefiIntro(ix, zones, dus, rng = Math.random) {
   const premier = ['tri', 'nuancier'].find((t) => dispo.includes(t)) || 'mot';
   const jeux = melange(dispo.filter((t) => !['memory', 'mot', premier].includes(t)), rng);
   const milieu = [jeux[0] || 'memory', 'mot', jeux[1] || 'memory'];
-  return [premier, ...melange(milieu, rng), jeux[2] || 'memory'].map((t) => tirerIntro(ix, t, zones, dus, rng, deja));
+  return [premier, ...melange(milieu, rng), jeux[2] || 'memory'].map((t) => tirerIntroPlein(ix, t, zones, dus, rng, deja));
 }
 export function composerBossIntro(ix, zone, rng = Math.random) {
   const deja = new Set();
@@ -747,10 +763,12 @@ export function composerBossIntro(ix, zone, rng = Math.random) {
   }
   const dispo = typesIntro(ix, [zone]);
   const poolRec = dispo.filter((t) => t !== 'plume' && t !== 'mot' && t !== 'formule');
-  const baseRec = poolRec.length ? poolRec : (ix.matiere === 'constit' ? ['memory', 'pouvoirs', 'nuancier'] : ['memory', 'quiadit', 'rangement']);
+  // Une chambre pauvre en exercices (constitutionnel, chambre 1 : Memory seul) reçoit aussi le mot :
+  // cinq Memory d'affilée épuisaient les notions et laissaient des écrans vides.
+  const baseRec = poolRec.length >= 3 ? poolRec : [...new Set([...poolRec, 'mot', 'memory'])];
   const typesAutres = melange(baseRec, rng).slice(0, 5);
   while (typesAutres.length < 5) typesAutres.push(choix(baseRec, rng));
-  const autres = typesAutres.map((t) => tirerIntro(ix, t, [zone], [], rng, deja));
+  const autres = typesAutres.map((t) => tirerIntroPlein(ix, t, [zone], [], rng, deja));
   const pos = 1 + Math.floor(rng() * 5);
   return [...autres.slice(0, pos), prodRound, ...autres.slice(pos)];
 }
