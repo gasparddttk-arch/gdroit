@@ -109,6 +109,13 @@ function modeAnimation() {
 }
 
 // Lexou en vidéo : seulement la chouette d'origine, sans tenue, skin, mascotte ni thème rose, et avec les effets complets.
+// Un skin qui a son film (vidéo découpée en planches) le joue en boucle quand les animations sont complètes ;
+// sinon, l'image fixe (ou la petite danse de 6-7).
+function skinVivant(id, { taille = 236, classe = '', danse = false } = {}) {
+  const film = SKINS.find((x) => x.id === id)?.film;
+  if (film && modeAnimation() === 'complet') return lexouAnime(film, { taille, classe, repli: hibouSkin(id, { taille }) });
+  return hibouSkin(id, { taille, classe, danse });
+}
 function lexouVideoPossible() {
   return modeAnimation() === 'complet' && !images.mascotte && !skinPorte() && !estRose()
     && !Object.values(etat.chouette.porte || {}).some(Boolean);
@@ -483,7 +490,8 @@ function figureSerie(s, fait) {
   if (reveil || retour) sauver();
   const skin = skinPorte();
   const anime = SKINS.find((x) => x.id === skin)?.anime;
-  const bete = skin ? hibouSkin(skin, { classe: 'sur-accueil', danse: true })
+  const filme = skin && SKINS.find((x) => x.id === skin)?.film && modeAnimation() === 'complet';
+  const bete = skin ? skinVivant(skin, { classe: 'sur-accueil', danse: true })
     : lexouVideoPossible() ? lexouAnime(Math.random() < 0.5 ? 'lecture' : 'plume', { taille: 210, classe: 'sur-accueil', repli: chouette('debout', { taille: 210 }) })
     : chouette(retour ? 'serment' : 'debout', { taille: 236, vivante: true, classe: `sur-accueil ${reveil ? 'reveil' : ''}` });
   let enScene = bete;
@@ -492,6 +500,8 @@ function figureSerie(s, fait) {
     c.tapes++;
     son('tap');
     const dixieme = c.tapes % 10 === 0;
+    // Un skin filmé continue sa boucle : on ne le remplace pas par une copie qui saute.
+    if (filme) { if (dixieme) { plumes(24); son('deblocage'); } return; }
     const pose = dixieme ? 'tribune' : 'clin';
     const geste = dixieme ? 'pirouette' : anime ? '' : 'saute';
     const copie = skin ? hibouSkin(skin, { classe: `sur-accueil ${geste}`, danse: true })
@@ -1757,9 +1767,9 @@ function apercuSkin(s, reafficher) {
   }
   function dessiner(danse) {
     boite.replaceChildren(...[
-      h('div', { class: `skin-scene ${s.legendaire ? 'legendaire' : ''}` }, h('span', { class: 'aura', 'aria-hidden': 'true' }), hibouSkin(s.id, { taille: 250, danse })),
+      h('div', { class: `skin-scene ${s.legendaire ? 'legendaire' : ''}` }, h('span', { class: 'aura', 'aria-hidden': 'true' }), skinVivant(s.id, { taille: 250, danse })),
       h('h2', {}, s.nom),
-      h('small', { class: 'skin-rarete' }, s.legendaire ? 'Légendaire, animé' : 'Classique'),
+      h('small', { class: 'skin-rarete' }, s.legendaire ? 'Légendaire, animé' : s.film ? 'Classique, animé' : 'Classique'),
       h('p', {}, s.txt),
       images.mascotte ? h('p', { class: 'aide-claire' }, 'Ton image personnelle passe avant : retire-la dans Profil pour voir ce skin au Palais.') : null,
       h('div', { class: 'boite-actions' }, action(), h('button', { class: 'bouton-lien', onClick: fermer }, 'Fermer')),

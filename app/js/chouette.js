@@ -23,9 +23,9 @@ export const TENUES = [
 
 // Les skins remplacent la chouette au Palais et dans l'aperçu de la boutique, nulle part ailleurs.
 export const SKINS = [
-  { id: 'six-sept', nom: 'Lexou 6-7', prix: 500, legendaire: true, anime: true, txt: 'Six, sept, six, sept. Le seul skin qui bouge.' },
+  { id: 'six-sept', nom: 'Lexou 6-7', prix: 500, legendaire: true, anime: true, film: 'six-sept', txt: 'Six, sept, six, sept.' },
   { id: 'performative', nom: 'Lexou Performative Man', prix: 200, txt: 'Écouteurs filaires, tote bag, café à emporter et l’essai bien en vue.' },
-  { id: 'goumin', nom: 'Goumin', prix: 200, txt: 'Il garde la photo. Il garde aussi la moitié du cœur.' },
+  { id: 'goumin', nom: 'Goumin', prix: 200, film: 'goumin', txt: 'Il garde la photo. Il garde aussi la moitié du cœur.' },
   { id: 'survet', nom: 'Le Survêt', prix: 200, txt: 'Survêt, chaîne et baskets à bulles.' },
   { id: 'bosslady', nom: 'Boss Lady', prix: 200, txt: 'Les paillettes d’abord, le plan en deux parties ensuite.' },
   { id: 'loco', nom: 'Lexou Loco', prix: 200, txt: 'Il a relu tout le cours en une nuit.' },

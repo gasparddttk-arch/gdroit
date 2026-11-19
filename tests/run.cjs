@@ -811,6 +811,32 @@ async function execGroupe1(b, PORT, erreurs) {
   }
 
   // 14b. Production réservée aux examens et aux audiences
+  if (matchSeul('skins animes')) {
+    // Goumin et 6-7 jouent leur film en boucle, au Palais et dans l'aperçu de la boutique (animations complètes).
+    const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block', recordVideo: { dir: CAP + 'video-skins/', size: { width: 390, height: 844 } } });
+    const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
+    await p.goto(`${URLB}?test&anim&matiere=admin&equipe=1`); await p.waitForSelector('.tribune');
+    await p.evaluate(() => { const e = window.__app.etat(); e.chouette.skins = ['goumin', 'six-sept']; e.chouette.skin = 'goumin'; window.__app.aller('palais'); });
+    await p.waitForSelector('.figure-chouette .lexou-anime.pret');
+    await p.waitForTimeout(2500);
+    await p.evaluate(() => document.querySelector('.figure-chouette').click());
+    assert.equal(await p.locator('.figure-chouette .lexou-anime').count(), 1, 'le film continue après un tap');
+    await p.evaluate(() => window.__app.aller('boutique'));
+    await p.locator('.skin-carte[data-skin-carte="six-sept"]').click();
+    await p.waitForSelector('.boite-skin .lexou-anime.pret');
+    assert.equal(await p.locator('.boite-skin .skin-rarete').innerText(), 'Légendaire, animé');
+    await p.waitForTimeout(3000);
+    await p.locator('.boite-skin .bouton-lien').click();
+    await p.waitForSelector('.boite-skin', { state: 'detached' }); await p.waitForTimeout(500);
+    await p.locator('.skin-carte[data-skin-carte="goumin"]').scrollIntoViewIfNeeded();
+    await p.locator('.skin-carte[data-skin-carte="goumin"]').click();
+    await p.waitForSelector('.boite-skin .lexou-anime.pret');
+    assert.equal(await p.locator('.boite-skin .skin-rarete').innerText(), 'Classique, animé');
+    await p.waitForTimeout(3000);
+    await c.close();
+    log('skins animes ok');
+  }
+
   if (matchSeul('solennelle l1')) {
     // L1 : aucune épreuve d'une audience solennelle, d'une révision ou d'un défi ne doit arriver vide.
     const { indexer, composerBoss, composerRevision, composerDefiIntro, introVide, creerRng } = await import('../app/js/engine.js');

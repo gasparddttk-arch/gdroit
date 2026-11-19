@@ -13,6 +13,9 @@ export const ANIMATIONS = {
   victoire: { l: 469, h: 420, images: 120, boucle: false },
   // Série perdue : Lexou regarde sa montre, s'énerve, puis colle son bec contre l'écran (cadre fixe, gros plan compris).
   colere: { l: 533, h: 480, images: 90, boucle: false, cadre: true },
+  // Skins animés (boutique et Palais), tirés des vidéos Gemini par scripts/planches.py.
+  goumin: { l: 332, h: 420, images: 120, boucle: true },
+  'six-sept': { l: 469, h: 420, images: 120, boucle: true },
 };
 
 // Charge et décode toutes les planches d'une animation ; rejette si l'une manque (hors ligne).
