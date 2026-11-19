@@ -811,6 +811,38 @@ async function execGroupe1(b, PORT, erreurs) {
   }
 
   // 14b. Production réservée aux examens et aux audiences
+  if (matchSeul('sans null')) {
+    // Aucun « null », « undefined » ou « NaN » ne doit apparaître à l'écran (ex. « null » à côté de « Audience »).
+    const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
+    const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
+    const verifier = async (ou) => {
+      await p.waitForTimeout(300);
+      const t = await p.evaluate(() => document.body.innerText);
+      const m = t.split('\n').find((l) => /\b(null|undefined|NaN)\b/.test(l));
+      assert(!m, `${ou} : « ${m} »`);
+    };
+    for (const [mat, eq] of [['admin', 1], ['oblig', 1], ['oblig', 2], ['intro', 1], ['constit', 1]]) {
+      await p.goto(`${URLB}?test&matiere=${mat}&equipe=${eq}`); await p.waitForSelector('.tribune');
+      await p.evaluate((m) => window.__app.ouvrirMatiere(m), mat); await p.waitForSelector('.tribune');
+      await verifier(`${mat}${eq} palais`);
+      for (const ecran of ['carte', 'arrets', 'profil', 'boutique', 'progression', 'examen', 'role', 'lexique', 'carnet', 'amis']) {
+        try { await p.evaluate((e) => window.__app.aller(e), ecran); } catch { continue; }
+        await verifier(`${mat}${eq} ${ecran}`);
+      }
+      // La tour, chambre par chambre, puis la liste.
+      await p.evaluate(() => window.__app.aller('carte')); await p.waitForTimeout(300);
+      const n = await p.locator('.tour-etage').count();
+      for (let i = 0; i < n; i++) {
+        await p.locator('.tour-etage').nth(i).evaluate((e) => e.click()); await verifier(`${mat}${eq} tour, étage ${i}`);
+      }
+      await p.evaluate(() => { window.__app.etat().reglages.vueChambres = 'liste'; window.__app.aller('carte'); });
+      await verifier(`${mat}${eq} liste des chambres`);
+      await p.evaluate(() => { window.__app.etat().reglages.vueChambres = 'tour'; });
+    }
+    await c.close();
+    log('sans null ok');
+  }
+
   if (matchSeul('solennelle l1')) {
     // L1 : aucune épreuve d'une audience solennelle, d'une révision ou d'un défi ne doit arriver vide.
     const { indexer, composerBoss, composerRevision, composerDefiIntro, introVide, creerRng } = await import('../app/js/engine.js');

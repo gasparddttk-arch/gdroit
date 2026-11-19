@@ -2,6 +2,20 @@
 import { etat } from './state.js';
 import { son, vibrer } from './sons.js';
 
+// append, replaceChildren… écrivent « null » quand on leur passe null (ex. un bouton conditionnel).
+// h() filtrait déjà ces valeurs ; on applique la même règle à toutes les insertions natives.
+const rien = (e) => e === null || e === undefined || e === false;
+for (const proto of [Element.prototype, DocumentFragment.prototype]) {
+  for (const m of ['append', 'prepend', 'replaceChildren']) {
+    const natif = proto[m];
+    if (natif) proto[m] = function (...enfants) { return natif.apply(this, enfants.filter((e) => !rien(e))); };
+  }
+}
+for (const m of ['before', 'after', 'replaceWith']) {
+  const natif = Element.prototype[m];
+  if (natif) Element.prototype[m] = function (...enfants) { return natif.apply(this, enfants.filter((e) => !rien(e))); };
+}
+
 export function h(tag, attrs = {}, ...enfants) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
