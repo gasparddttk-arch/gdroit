@@ -1315,8 +1315,8 @@ async function execGroupe1(b, PORT, erreurs) {
   if (matchSeul('commentaires')) {
     const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
     const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
-    await p.goto(URLB + '?test'); await p.waitForSelector('.tribune');
-    // Réservé au droit administratif, équipe 1.
+    await p.goto(URLB + '?test&jour=2026-11-18'); await p.waitForSelector('.tribune');
+    // Réservé au droit administratif, équipe 1, jusqu'à l'évaluation du 19 novembre 2026.
     await p.evaluate(() => { const e = window.__app.etat(); e.matiere = 'admin'; e.equipe = 2; window.__app.aller('carte'); });
     await p.waitForSelector('.tour-ecran'); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'pas en équipe 2');
     await p.evaluate(() => { const e = window.__app.etat(); e.equipe = 1; e.reglages.bullesVues = { commentaire: true }; window.__app.aller('palais'); window.__app.aller('carte'); });
@@ -1355,6 +1355,63 @@ async function execGroupe1(b, PORT, erreurs) {
     await p.waitForSelector('.tour-etage.allumage[data-zone="td"][data-etat="gagnee"]');
     await c.close();
     log('commentaires ok');
+  }
+
+  if (matchSeul('eval oblig')) {
+    // Obligations, équipe 1 : la chambre temporaire des 59 questions, jusqu'au 29 novembre 2026.
+    const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
+    const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
+    const ouvrir = async (jour, equipe) => {
+      await p.goto(`${URLB}?test&jour=${jour}&matiere=oblig&equipe=${equipe}`); await p.waitForSelector('.tribune');
+      await p.evaluate(() => window.__app.ouvrirMatiere('oblig')); await p.waitForSelector('.tribune');
+      await p.evaluate(() => { window.__app.etat().reglages.bullesVues = { commentaire: true }; window.__app.aller('carte'); }); await p.waitForSelector('.tour-ecran');
+    };
+    await ouvrir('2026-11-20', 2); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'pas en équipe 2');
+    await ouvrir('2026-11-30', 1); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'fermée après le 29 novembre');
+    // Le droit administratif a perdu sa chambre bonus : l'évaluation est passée.
+    await p.evaluate(() => { const e = window.__app.etat(); e.matiere = 'admin'; window.__app.aller('carte'); }); await p.waitForSelector('.tour-ecran');
+    assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'plus de chambre bonus en administratif');
+    await ouvrir('2026-11-29', 1);
+    await p.waitForSelector('.tour-etage[data-zone="td"][data-etat="cours"]');
+    await p.evaluate(() => document.querySelector('.tour-etage[data-zone="td"] .tour-boite').click()); await p.waitForSelector('.cmt-arrets');
+    assert.equal(await p.locator('.cmt-arret').count(), 59, '59 questions');
+    const D = await p.evaluate(async () => { const m = await import('./js/eval-oblig-data.js'); return m.QUESTIONS.map((x) => ({ n: x.n, mots: [...x.trou.matchAll(/\{\{(.+?)\}\}/g)].map((y) => y[1]), points: x.points })); });
+    await p.tap('[data-cmt-prio]');
+    // Une séance parfaite : 4 questions à reconnaître et compléter, et 4 pièges au milieu.
+    for (let k = 0; k < 20; k++) {
+      await p.waitForSelector('.cmt-qcm .options:not(.repondu) .option, .cmt-trous .cmt-trou:not([disabled]), .resultats');
+      if (await p.locator('.resultats').count()) break;
+      if (await p.locator('.cmt-trous').count()) {
+        const n = Number((await p.locator('.cmt-ref').innerText()).match(/Question (\d+)/)[1]);
+        for (const m of D.find((x) => x.n === n).mots) await p.locator('.cmt-reserve .cmt-morceau', { hasText: m }).filter({ hasText: new RegExp(`^${m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).first().tap();
+        await p.tap('.pied .cta'); assert.equal(await p.locator('.cmt-trou.faux').count(), 0, `trous de la question ${n}`);
+        await p.tap('.pied .cta');
+      } else { await p.tap('.options:not(.repondu) .option[data-ok="true"]'); await p.tap('.pied .cta'); }
+    }
+    await p.waitForSelector('.resultats');
+    const suivis = await p.evaluate(() => window.__app.etat().evalOblig);
+    assert.deepEqual(Object.keys(suivis).filter((n) => suivis[n].seances).map(Number).sort((a, b) => a - b), [1, 2, 3, 4], 'les quatre premières questions');
+    assert(Object.values(suivis).filter((s) => s.seances).every((s) => s.niveau === 1), 'elles passent « Reconnue »');
+    // Au niveau « Maîtrisée », on restitue : une réponse complète retrouve tous les points.
+    await p.evaluate(() => { window.__app.etat().evalOblig[25] = { niveau: 2, seances: 2, scores: {} }; window.__app.aller('carte'); });
+    await p.waitForSelector('.tour-ecran');
+    await p.evaluate(() => document.querySelector('.tour-etage[data-zone="td"] .tour-boite').click()); await p.waitForSelector('.cmt-arrets');
+    await p.tap('[data-cmt="25"]');
+    await p.waitForSelector('.cmt-ecrit');
+    await p.locator('.cmt-ecrit').fill(D.find((x) => x.n === 25).points.join('. '));
+    await p.tap('.pied .cta'); await p.waitForSelector('.eval-points');
+    assert.equal(await p.locator('.eval-points li.faux').count(), 0, 'tous les points retrouvés');
+    await debordement(p, 'restitution');
+    await p.tap('.pied .cta');
+    // Puis les pièges, et la fin.
+    for (let k = 0; k < 6 && !(await p.locator('.resultats').count()); k++) { await p.waitForSelector('.cmt-qcm .options:not(.repondu) .option, .resultats'); if (await p.locator('.resultats').count()) break; await p.tap('.options:not(.repondu) .option[data-ok="true"]'); await p.tap('.pied .cta'); }
+    await p.waitForSelector('.resultats');
+    assert.equal(await p.evaluate(() => window.__app.etat().evalOblig[25].niveau), 3, 'question 25 restituée');
+    // Toutes maîtrisées : la salle est validée.
+    await p.evaluate(() => { const e = window.__app.etat(); for (let n = 1; n <= 59; n++) e.evalOblig[n] = { niveau: 2, seances: 2, scores: {} }; window.__app.aller('carte'); });
+    await p.waitForSelector('.tour-etage[data-zone="td"][data-etat="gagnee"]');
+    await c.close();
+    log('eval oblig ok');
   }
 
   if (matchSeul('fenetres clavier')) {

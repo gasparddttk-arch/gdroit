@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Test veille">
+  <meta name="theme-color" content="#0A0E22">
+  <link rel="manifest" href="test-veille.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <title>Test veille</title>
+  <style>
+    :root { --fond: #0A0E22; --carte: #161B33; --bord: #232A4D; --texte: #F4F5FA; --texte-2: #8F98C2; --or: #F2C55C; --vert: #5EE6A8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fond); color: var(--texte); font: 15px/1.45 -apple-system, system-ui, sans-serif;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
+    h1 { font: 600 22px/1.2 ui-serif, Georgia, serif; margin: 4px 0 6px; }
+    p { color: var(--texte-2); margin: 0 0 12px; }
+    ol { color: var(--texte-2); padding-left: 20px; margin: 0 0 14px; }
+    .boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    button { font: inherit; font-weight: 600; color: var(--texte); background: var(--carte); border: 1px solid var(--bord);
+      border-bottom-width: 3px; border-radius: 12px; padding: 12px 10px; }
+    button.actif { border-color: var(--vert); color: var(--vert); }
+    button.or { background: var(--or); color: #1A1300; border-color: #B98A25; }
+    #etat { font-size: 13px; color: var(--texte-2); margin-bottom: 8px; }
+    #journal { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 10px; margin: 0;
+      font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-word; min-height: 200px; }
+  </style>
+</head>
+<body>
+  <h1>Test veille</h1>
+  <p>Page de test du mode BU. Elle note ce que l’iPhone signale quand on quitte l’appli.</p>
+  <ol>
+    <li>Verrouille le téléphone 10 secondes, puis reviens.</li>
+    <li>Passe sur une autre appli 10 secondes, puis reviens.</li>
+    <li>Fais-toi envoyer une notification, touche-la, puis reviens.</li>
+    <li>Refais les trois essais avec « Son muet » activé.</li>
+  </ol>
+  <div class="boutons">
+    <button id="son">Son muet</button>
+    <button id="ecran">Écran allumé</button>
+    <button id="effacer">Effacer</button>
+    <button id="copier" class="or">Copier le journal</button>
+  </div>
+  <div id="etat"></div>
+  <pre id="journal"></pre>
+<script>
+(() => {
+  const CLE = 'test-veille-journal';
+  let lignes = [];
+  try { lignes = JSON.parse(localStorage.getItem(CLE) || '[]'); } catch { lignes = []; }
+  const t0 = performance.now();
+  const el = document.getElementById('journal');
+  const heure = () => { const d = new Date(); return d.toLocaleTimeString('fr-FR') + '.' + String(d.getMilliseconds()).padStart(3, '0'); };
+  const sauver = () => { try { localStorage.setItem(CLE, JSON.stringify(lignes.slice(-400))); } catch {} };
+  const afficher = () => { el.textContent = lignes.join('\n'); };
+  const noter = (quoi) => {
+    lignes.push(`${heure()}  +${Math.round(performance.now() - t0)}ms  ${quoi}  [vis=${document.visibilityState} focus=${document.hasFocus()}]`);
+    sauver(); afficher();
+  };
+  const ua = navigator.userAgent.match(/OS [\d_]+/)?.[0]?.replace(/_/g, '.') || navigator.platform;
+  noter(`ouverture (${ua}, ${matchMedia('(display-mode: standalone)').matches || navigator.standalone ? 'installée' : 'navigateur'})`);
+
+  document.addEventListener('visibilitychange', () => noter(`visibilitychange → ${document.visibilityState}`));
+  addEventListener('pagehide', (e) => noter(`pagehide persisted=${e.persisted}`));
+  addEventListener('pageshow', (e) => noter(`pageshow persisted=${e.persisted}`));
+  addEventListener('blur', () => noter('blur'));
+  addEventListener('focus', () => noter('focus'));
+  document.addEventListener('freeze', () => noter('freeze'));
+  document.addEventListener('resume', () => noter('resume'));
+  addEventListener('beforeunload', () => noter('beforeunload'));
+
+  // Battement : un trou dans le rythme montre combien de temps la page a été suspendue.
+  let dernier = performance.now(), dernierMur = Date.now();
+  setInterval(() => {
+    const n = performance.now(), m = Date.now();
+    const trouMur = m - dernierMur, trouPage = n - dernier;
+    if (trouMur > 1500) noter(`battement : ${Math.round(trouMur / 100) / 10} s sans exécution (horloge page ${Math.round(trouPage / 100) / 10} s)`);
+    dernier = n; dernierMur = m;
+  }, 250);
+
+  // Son muet : un son presque inaudible en boucle, pour voir si la page continue de tourner en arrière-plan.
+  let audio = null;
+  const bSon = document.getElementById('son');
+  bSon.onclick = async () => {
+    if (audio && !audio.paused) { audio.pause(); bSon.classList.remove('actif'); noter('son muet arrêté'); return; }
+    if (!audio) {
+      const ctx = new OfflineAudioContext(1, 44100, 44100);
+      const osc = ctx.createOscillator(); const g = ctx.createGain(); g.gain.value = 0.0005;
+      osc.connect(g).connect(ctx.destination); osc.start();
+      const buf = await ctx.startRendering();
+      const d = buf.getChannelData(0); const v = new DataView(new ArrayBuffer(44 + d.length * 2));
+      const s = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+      s(0, 'RIFF'); v.setUint32(4, 36 + d.length * 2, true); s(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+      v.setUint16(22, 1, true); v.setUint32(24, 44100, true); v.setUint32(28, 88200, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+      s(36, 'data'); v.setUint32(40, d.length * 2, true); d.forEach((x, i) => v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 32767, true));
+      audio = new Audio(URL.createObjectURL(new Blob([v], { type: 'audio/wav' }))); audio.loop = true;
+      if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: 'Lexou travaille', artist: 'Gdroit' });
+    }
+    try { await audio.play(); bSon.classList.add('actif'); noter('son muet démarré'); } catch (e) { noter('son muet refusé : ' + e.message); }
+  };
+
+  // Écran allumé (Wake Lock).
+  let verrou = null;
+  const bEcran = document.getElementById('ecran');
+  const prendre = async () => {
+    try { verrou = await navigator.wakeLock.request('screen'); bEcran.classList.add('actif'); noter('écran allumé : activé');
+      verrou.addEventListener('release', () => { noter('écran allumé : relâché par le système'); bEcran.classList.remove('actif'); });
+    } catch (e) { noter('écran allumé indisponible : ' + e.message); }
+  };
+  bEcran.onclick = async () => { if (verrou && !verrou.released) { await verrou.release(); verrou = null; noter('écran allumé : coupé'); } else prendre(); };
+
+  document.getElementById('effacer').onclick = () => { lignes = []; sauver(); noter('journal effacé'); };
+  document.getElementById('copier').onclick = async () => {
+    try { await navigator.clipboard.writeText(lignes.join('\n')); document.getElementById('etat').textContent = 'Journal copié. Colle-le dans la conversation.'; }
+    catch { getSelection().selectAllChildren(el); document.getElementById('etat').textContent = 'Copie automatique refusée : le texte est sélectionné, utilise « Copier ».'; }
+  };
+  afficher();
+})();
+</script>
+</body>
+</html>

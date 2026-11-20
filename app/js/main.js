@@ -5,6 +5,7 @@ import { chouette, portes, reagir, plumes, codeEnvole, adjuge, precharger, POSE_
 import { lexouAnime, prechargerLexou } from './lexou.js';
 import { LAMPES, EFFETS, pieceDe } from './tour.js';
 import { jouerCommentaire, roundsCommentaire, arretPrioritaire, suiviCommentaire, COMMENTAIRES } from './commentaire.js';
+import { jouerEval, roundsEval, suiviEval, progressionEval, evalOuverte, QUESTIONS, THEMES as THEMES_EVAL, NIVEAUX_EVAL } from './eval-oblig.js';
 import { son, reveillerAudio, surveillerAudio, appliquerSession, vibrer, rendreSon, NOMS_SONS } from './sons.js';
 import { remplacerEtat, choisirAnnee, ajouterSemaine, gagnerAppel, erreursOuvertes, carnetVisible, changerEquipe,
   SCEAU_REUSSITE, SCEAU_FICHES, PRIME_MAITRISE, etat, M, charger, sauver, jour, lundi, rang, rangGeneral, verifierSerie, validerJour, relever, prixForclusion, noter, niveau, aRevoir, aRattraper,
@@ -27,7 +28,7 @@ import { images, chargerImages, preparerImage, enregistrerImage, retirerImage } 
 import { noter as suivre, contexte } from './suivi.js';
 import { jouerFormule } from './formule.js';
 
-const TOUS_JEUX = { ...JEUX, commentaire: jouerCommentaire, formule: jouerFormule, atelier: jouerAtelier, pouvoirs: jouerPouvoirs, nuancier: jouerNuancier, plume: jouerPlume, cas: jouerCas, remede: jouerRemede, frise: jouerFrise, appel: jouerAppel, flash: jouerFlash, plaide: jouerPlaide, trous: jouerTrous, express: jouerExpress, syllogisme: jouerSyllogisme, casnu: jouerCasNu,
+const TOUS_JEUX = { ...JEUX, commentaire: jouerCommentaire, evaltd: jouerEval, formule: jouerFormule, atelier: jouerAtelier, pouvoirs: jouerPouvoirs, nuancier: jouerNuancier, plume: jouerPlume, cas: jouerCas, remede: jouerRemede, frise: jouerFrise, appel: jouerAppel, flash: jouerFlash, plaide: jouerPlaide, trous: jouerTrous, express: jouerExpress, syllogisme: jouerSyllogisme, casnu: jouerCasNu,
   tri: jouerTri, mot: jouerMot, rangement: jouerRangement, quiadit: jouerQuiADit, scanner: jouerScanner, memory: jouerMemory };
 
 // FAIRE APPEL : chaque fiche ratée revient sous une autre forme, une question rapide.
@@ -724,30 +725,52 @@ function ecranRole() {
     lignes, casL1, blocDunk()));
 }
 
-// COMMENTAIRES D'ARRÊT (droit administratif, équipe 1) : un arrêt, six épreuves, et un niveau par arrêt.
-const commentairesDispo = () => etat.matiere === 'admin' && etat.equipe === 1;
+// LES CHAMBRES TEMPORAIRES « ÉVALUATION TD » : une seule à la fois, décrite par salleTD().
+// Droit administratif (équipe 1) : les commentaires d'arrêt, évaluation passée le 19 novembre 2026.
+// Droit des obligations (équipe 1) : les 59 questions de cours, jusqu'au 29 novembre 2026.
+const CMT_FIN = '2026-11-19';
 function lancerCommentaire(c) {
   lancer({ type: 'mode', mode: 'commentaire', titre: `Commentaire : ${c.nom}`, rounds: roundsCommentaire(c.id) });
 }
 const NIVEAUX_CMT = ['À découvrir', 'Reconnu', 'Maîtrisé', 'Restitué'];
-const ZONE_TD = { id: 'td', titre: 'Évaluation TD : commentaires d’arrêt', bonus: true, td: true };
-function progressionTD() {
-  const niveaux = COMMENTAIRES.map((c) => suiviCommentaire(c.id).niveau);
-  return { acquis: niveaux.filter((n) => n >= 2).length, total: niveaux.length, parfaite: niveaux.every((n) => n >= 3) };
+const ZONE_TD = { id: 'td', titre: 'Évaluation TD', bonus: true, td: true };
+const lancerEval = (n = null) => lancer({ type: 'mode', mode: 'evaltd', titre: n ? `Question ${n}` : 'Évaluation TD', rounds: roundsEval(n) });
+const SALLE_CMT = {
+  titre: 'Évaluation TD : commentaires d’arrêt', unite: 'arrêt', maitrise: 'maîtrisé', niveaux: NIVEAUX_CMT,
+  prog: () => { const nv = COMMENTAIRES.map((c) => suiviCommentaire(c.id).niveau); return { acquis: nv.filter((n) => n >= 2).length, total: nv.length, parfaite: nv.every((n) => n >= 3) }; },
+  elements: () => COMMENTAIRES.map((c) => ({ cle: c.id, nom: c.nom, ref: c.ref, detail: `${c.ref}. ${c.td}.`, niveau: suiviCommentaire(c.id).niveau, lancer: () => lancerCommentaire(c) })),
+  reviser: () => lancerCommentaire(arretPrioritaire()),
+  premier: () => `Commencer par ${arretPrioritaire().nom}`,
+  texte: () => `${COMMENTAIRES.length} commentaires d’arrêt. Pour chacun : l’affaire, le problème de droit, la solution, la problématique, le plan, puis tout réécrire de mémoire. Une séance réussie fait monter l’arrêt d’un niveau. La salle est validée quand tous sont au moins « Maîtrisé ».`,
+  pret: 'Tout restitué de mémoire. Prêt pour le TD.',
+};
+const SALLE_EVAL = {
+  titre: 'Évaluation TD : les 59 questions', unite: 'question', maitrise: 'maîtrisée', niveaux: NIVEAUX_EVAL,
+  prog: progressionEval,
+  elements: () => QUESTIONS.map((x) => ({ cle: String(x.n), nom: `${x.n}. ${x.q}`, ref: THEMES_EVAL[x.th], detail: THEMES_EVAL[x.th], niveau: suiviEval(x.n).niveau, lancer: () => lancerEval(x.n) })),
+  reviser: () => lancerEval(),
+  premier: () => 'Lancer une séance',
+  texte: () => `${QUESTIONS.length} questions de cours, jusqu’au 29 novembre. Chaque séance en reprend quatre, les moins sûres d’abord : reconnaître ce qu’il faut citer, compléter la phrase clé, puis restituer la réponse de mémoire, avec une épreuve de pièges au milieu. La salle est validée quand toutes sont au moins « Maîtrisée ».`,
+  pret: 'Les 59 questions restituées. Prêt pour l’évaluation.',
+};
+function salleTD() {
+  if (etat.equipe !== 1) return null;
+  if (etat.matiere === 'admin' && evalOuverte(undefined, CMT_FIN)) return SALLE_CMT;
+  if (etat.matiere === 'oblig' && evalOuverte()) return SALLE_EVAL;
+  return null;
 }
+const commentairesDispo = () => !!salleTD();
+const progressionTD = () => salleTD().prog();
 const etatTD = () => { const p = progressionTD(); return p.parfaite ? 'parfaite' : p.acquis === p.total ? 'gagnee' : 'cours'; };
+const pointsNiveau = (niveau, noms) => h('span', { class: 'cmt-niveau', 'aria-label': `Niveau : ${noms[niveau]}` }, h('span', { class: 'cmt-points' }, [0, 1, 2].map((k) => h('i', { class: k < niveau ? 'plein' : '' }))), h('small', {}, noms[niveau]));
 function ecranCommentaires() {
-  const prio = arretPrioritaire();
+  const S = salleTD(); if (!S) { aller('carte'); return; }
   montrer(barreHaut(), h('button', { class: 'bouton-matiere', onClick: () => { son('retour'); fixerSens('arriere'); aller('carte'); } }, icone('retour', 18), 'Les chambres'),
     h('section', { class: 'role cmt-liste' }, h('p', { class: 'surtitre' }, 'Chambre bonus'), h('h1', {}, 'Évaluation TD'),
-      h('p', { class: 'page-sous' }, `${COMMENTAIRES.length} commentaires d’arrêt. Pour chacun : l’affaire, le problème de droit, la solution, la problématique, le plan, puis tout réécrire de mémoire. Une séance réussie fait monter l’arrêt d’un niveau. La salle est validée quand tous sont au moins « Maîtrisé ».`),
-      h('button', { class: 'bouton-or', 'data-cmt-prio': '', onClick: () => lancerCommentaire(prio) }, `Commencer par ${prio.nom}`),
-      h('ul', { class: 'cmt-arrets' }, COMMENTAIRES.map((c) => {
-        const s = suiviCommentaire(c.id);
-        return h('li', {}, h('button', { class: 'cmt-arret', 'data-cmt': c.id, onClick: () => lancerCommentaire(c) },
-          h('span', { class: 'cmt-arret-txt' }, h('b', {}, c.nom), h('small', {}, `${c.ref}. ${c.td}.`)),
-          h('span', { class: 'cmt-niveau', 'aria-label': `Niveau : ${NIVEAUX_CMT[s.niveau]}` }, h('span', { class: 'cmt-points' }, [0, 1, 2].map((k) => h('i', { class: k < s.niveau ? 'plein' : '' }))), h('small', {}, NIVEAUX_CMT[s.niveau]))));
-      }))));
+      h('p', { class: 'page-sous' }, S.texte()),
+      h('button', { class: 'bouton-or', 'data-cmt-prio': '', onClick: () => S.reviser() }, S.premier()),
+      h('ul', { class: 'cmt-arrets' }, S.elements().map((e) => h('li', {}, h('button', { class: 'cmt-arret', 'data-cmt': e.cle, onClick: () => e.lancer() },
+        h('span', { class: 'cmt-arret-txt' }, h('b', {}, e.nom), h('small', {}, e.detail)), pointsNiveau(e.niveau, S.niveaux)))))));
 }
 
 // Vers l'examen : un enchaînement facultatif, sans rappel ni compte à rebours.
@@ -850,6 +873,7 @@ function choixGenre(m) {
 }
 function lancerMode(m, genre = null) {
   if (m === 'commentaire') { lancerCommentaire(arretPrioritaire()); return; }
+  if (m === 'evaltd') { lancerEval(); return; }
   // En obligations, un exercice choisi puise dans tout le cours : les chambres rythment le défi et les audiences.
   // La formule puise dans toutes les chambres ouvertes : peu d'arrêts s'y prêtent.
   let zones = m === 'formule' && !estOblig() ? zonesOuvertes(ix) : zonesCours();
@@ -1328,7 +1352,7 @@ function carteListe() {
   montrer(barreHaut(), h('section', { class: 'page page-chambres' },
     h('div', { class: 'chambres-tete' }, h('h1', {}, 'Chambres'), h('span', {}, `${audiences} audience${audiences > 1 ? 's' : ''} sur ${parcours.length}`)),
     h('button', { class: 'bouton-lien vers-tour', 'data-vers-tour': '', onClick: () => changerVueChambres('tour') }, 'Voir la tour'),
-    commentairesDispo() ? h('button', { class: 'bouton-fantome vers-td', 'data-vers-td': '', onClick: () => ecranCommentaires() }, `Chambre bonus : évaluation TD (${progressionTD().acquis} sur ${COMMENTAIRES.length})`) : null,
+    commentairesDispo() ? h('button', { class: 'bouton-fantome vers-td', 'data-vers-td': '', onClick: () => ecranCommentaires() }, `Chambre bonus : évaluation TD (${progressionTD().acquis} sur ${progressionTD().total})`) : null,
     h('p', { class: 'page-sous' }, estConstit() ? `${matiereDe(etat.matiere).nom}, ${ETIQUETTE_CONSTIT}` : estIntro() ? matiereDe(etat.matiere).nom : `${matiereDe(etat.matiere).nom}, équipe ${etat.equipe}`), plan));
 }
 
@@ -1380,7 +1404,7 @@ function tourPalais() {
     const poussieres = e === 'parfaite' ? h('span', { class: 'tour-poussieres' }, Array.from({ length: 8 }, (_, k) => h('i', { style: `left:${10 + k * 11}%;top:${30 + (k * 37) % 45}%;animation-delay:${(k * 0.7).toFixed(1)}s` }))) : null;
     const img = (cls, src) => h('img', { class: cls, src, alt: '', draggable: 'false', loading: Math.abs(i - courant) <= 1 ? 'eager' : 'lazy', decoding: 'async', onError: (ev) => { ev.target.hidden = true; } });
     return h('div', { class: `tour-etage${nouvelles.includes(z.id) ? ' allumage' : ''}`, 'data-etat': e, 'data-zone': z.id, style: `z-index:${10 + i};--p:${part.toFixed(3)}` },
-      h('button', { class: 'tour-boite', 'aria-label': z.td ? `Chambre bonus, ${z.titre}` : `Chambre ${z.id}, ${z.titre}`, onClick: () => { son('tap'); if (z.td) ecranCommentaires(); else if (e === 'fermee') chambreFermee(z); else if (e !== 'travaux') chambre(z.id); } },
+      h('button', { class: 'tour-boite', 'aria-label': z.td ? `Chambre bonus, ${salleTD().titre}` : `Chambre ${z.id}, ${z.titre}`, onClick: () => { son('tap'); if (z.td) ecranCommentaires(); else if (e === 'fermee') chambreFermee(z); else if (e !== 'travaux') chambre(z.id); } },
         img('tour-vide', `${IMG_TOUR}vide.webp`), img('tour-plan', `${IMG_TOUR}${piece}-plan.webp`), img('tour-pleine', `${IMG_TOUR}${piece}.webp`),
         h('span', { class: 'tour-halo' }), lampes, effets, poussieres, h('span', { class: 'tour-eclat' }),
         e === 'fermee' || e === 'travaux' ? h('span', { class: 'tour-cadenas' }, icone(e === 'travaux' ? 'travaux' : 'cadenas', 40)) : null));
@@ -1436,25 +1460,24 @@ function tourPalais() {
   }
   // La chambre bonus : les commentaires d'arrêt du TD, validée quand tous sont au moins « Maîtrisé ».
   function remplirTD() {
+    const S = salleTD();
     const p = progressionTD(); const e = etatTD();
     etiquette.textContent = 'Chambre bonus';
-    titre.textContent = ZONE_TD.titre;
+    titre.textContent = S.titre;
     barre.style.width = `${(p.acquis / p.total) * 100}%`;
-    compte.textContent = e === 'parfaite' ? 'Tous restitués de mémoire' : e === 'gagnee' ? 'Salle validée' : `${p.acquis} arrêt${p.acquis > 1 ? 's' : ''} maîtrisé${p.acquis > 1 ? 's' : ''} sur ${p.total}`;
+    compte.textContent = e === 'parfaite' ? 'Tout restitué de mémoire' : e === 'gagnee' ? 'Salle validée' : `${p.acquis} ${S.unite}${p.acquis > 1 ? 's' : ''} ${S.maitrise}${p.acquis > 1 ? 's' : ''} sur ${p.total}`;
     pct.textContent = e === 'cours' ? `${Math.round((p.acquis / p.total) * 100)} %` : '';
-    const prio = arretPrioritaire();
     actions.classList.remove('deux');
-    actions.replaceChildren(h('button', { class: 'bouton-or', 'data-reviser-td': '', onClick: () => lancerCommentaire(prio) }, 'Réviser cette chambre'),
+    actions.replaceChildren(h('button', { class: 'bouton-or', 'data-reviser-td': '', onClick: () => S.reviser() }, 'Réviser cette chambre'),
       h('button', { class: 'bouton-fantome', onClick: () => ecranCommentaires() }, 'La liste'));
     liste.classList.add('une-colonne');
-    liste.replaceChildren(...COMMENTAIRES.map((c) => { const s = suiviCommentaire(c.id); return h('li', {}, h('button', { class: 'cmt-arret', onClick: () => lancerCommentaire(c) },
-      h('span', { class: 'cmt-arret-txt' }, h('b', {}, c.nom), h('small', {}, c.ref)),
-      h('span', { class: 'cmt-niveau' }, h('span', { class: 'cmt-points' }, [0, 1, 2].map((k) => h('i', { class: k < s.niveau ? 'plein' : '' }))), h('small', {}, NIVEAUX_CMT[s.niveau])))); }));
+    liste.replaceChildren(...S.elements().map((x) => h('li', {}, h('button', { class: 'cmt-arret', onClick: () => x.lancer() },
+      h('span', { class: 'cmt-arret-txt' }, h('b', {}, x.nom), h('small', {}, x.ref)), pointsNiveau(x.niveau, S.niveaux)))));
     const pose = e === 'cours' ? 'lunettes' : 'clin';
     if (pose !== poseLexou) { poseLexou = pose; lexou.replaceChildren(chouette(pose, { taille: 84 })); }
     bulle.classList.add('change');
     const reste = p.total - p.acquis;
-    setTimeout(() => { bulle.textContent = e === 'parfaite' ? 'Tout restitué de mémoire. Prêt pour le TD.' : e === 'gagnee' ? 'Salle validée. Reste à tout restituer de mémoire.' : `Encore ${pluriel(reste, 'arrêt')} à maîtriser pour valider la salle.`; bulle.classList.remove('change'); }, 150);
+    setTimeout(() => { bulle.textContent = e === 'parfaite' ? S.pret : e === 'gagnee' ? 'Salle validée. Reste à tout restituer de mémoire.' : `Encore ${pluriel(reste, S.unite)} à maîtriser pour valider la salle.`; bulle.classList.remove('change'); }, 150);
     etages.forEach((el, i) => el.classList.toggle('courant', i === courant));
   }
   let attente;
