@@ -2220,6 +2220,12 @@ body:has(#onglets[hidden]) .clone-sortant {
 .cmt-ecrit { width: 100%; min-height: 64px; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--carte-bord); background: var(--banc-fort); color: var(--texte); font: 16px/1.35 var(--corps); resize: vertical; }
 .cmt-bilan { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 12px 14px; border-radius: 14px; background: var(--banc-fort); border-left: 4px solid #E0475B; }
 .cmt-bilan.juste { border-left-color: #3DBE8B; } .cmt-bilan.moyen { border-left-color: var(--or); }
+/* Évaluation TD (obligations) : les points de la réponse attendue, retrouvés ou non. */
+.eval-points { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.eval-points li { padding: 10px 12px 10px 34px; border-radius: 12px; background: var(--banc-fort); font: 400 15px/1.4 var(--ui); position: relative; }
+.eval-points li::before { content: ''; position: absolute; left: 12px; top: 14px; width: 12px; height: 12px; border-radius: 50%; background: #E0475B; }
+.eval-points li.juste::before { background: #3DBE8B; }
+.eval-points li.faux { color: var(--texte-2); }
 .cmt-bilan b { font: 700 15px var(--ui); }
 .cmt-pct { font: 700 15px var(--ui); color: var(--texte-2); }
 .cmt-bilan p { grid-column: 1 / -1; margin: 0; }
