@@ -1154,6 +1154,14 @@ body:has(#onglets[hidden]) #app { padding-bottom: 0; }
 .comparer tbody th { font-weight: 400; color: var(--texte-2); width: 34%; }
 .amis .reglages { margin-top: 6px; }
 .defis-attente { display: grid; gap: 8px; margin-bottom: 12px; }
+/* L'article de la semaine (Droit au but) : carte de l'accueil et fenêtre d'arrivée. */
+.hebdo { margin: 14px 0; padding: 16px; border-radius: 24px; background: var(--carte-haut, var(--banc-fort)); border: 1px solid var(--carte-bord, transparent); display: grid; gap: 8px; }
+.hebdo-media { margin: 0; font: 600 13px var(--ui); color: var(--or); }
+.hebdo h2, .boite-hebdo h2 { margin: 0; font: 600 21px/1.25 var(--titre, var(--ui)); }
+.hebdo p:not(.hebdo-media), .boite-hebdo p:not(.hebdo-media) { margin: 0; font: 400 15px/1.45 var(--ui); color: var(--texte-2); }
+.hebdo .hebdo-conseil, .boite-hebdo .hebdo-conseil { color: var(--texte); }
+.hebdo button { margin-top: 4px; }
+.boite-hebdo { display: grid; gap: 10px; }
 .defi-attente { width: 100%; }
 
 /* Frise : les années posées, les décisions à placer */

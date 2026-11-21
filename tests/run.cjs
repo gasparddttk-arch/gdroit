@@ -1388,6 +1388,35 @@ async function execGroupe1(b, PORT, erreurs) {
     log('eval oblig ok');
   }
 
+  if (matchSeul('hebdo')) {
+    // L'article de la semaine : fenêtre à l'arrivée (une fois), carte sur l'accueil, exercice, score gardé.
+    const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
+    const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
+    for (const [mat, eq] of [['intro', 1], ['admin', 2]]) {
+      await p.goto(`${URLB}?test&hebdo&matiere=${mat}&equipe=${eq}`); await p.waitForSelector('.tribune');
+      await p.evaluate((m) => { window.__app.ouvrirMatiere(m); }, mat); await p.waitForSelector('.tribune');
+      await p.waitForSelector('[data-hebdo]');
+    }
+    await p.evaluate(() => { const e = window.__app.etat(); e.hebdo = {}; window.__app.aller('palais'); });
+    await p.waitForSelector('.boite-hebdo');
+    assert.match(await p.locator('.boite-hebdo').innerText(), /Droit au but[\s\S]*@media_droit_au_but[\s\S]*Lis l’article avant/);
+    await debordement(p, 'fenêtre hebdo');
+    await p.tap('[data-hebdo-fenetre]');
+    for (let k = 0; k < 10; k++) {
+      await p.waitForSelector('.hebdo-qcm .options:not(.repondu) .option, .resultats');
+      if (await p.locator('.resultats').count()) break;
+      await p.tap('.options:not(.repondu) .option[data-ok="true"]'); await p.tap('.pied .cta');
+    }
+    await p.waitForSelector('.resultats');
+    const sv = await p.evaluate(() => Object.values(window.__app.etat().hebdo)[0]);
+    assert(sv.fait && sv.meilleur === 8, 'exercice fait, 8 sur 8');
+    await p.evaluate(() => window.__app.aller('palais')); await p.waitForSelector('[data-hebdo-jouer]');
+    assert.match(await p.locator('[data-hebdo-jouer]').innerText(), /meilleur score : 8 sur 8/);
+    assert.equal(await p.locator('.boite-hebdo').count(), 0, 'la fenêtre ne revient pas');
+    await c.close();
+    log('hebdo ok');
+  }
+
   if (matchSeul('fenetres clavier')) {
     const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
     const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
