@@ -1154,13 +1154,26 @@ body:has(#onglets[hidden]) #app { padding-bottom: 0; }
 .comparer tbody th { font-weight: 400; color: var(--texte-2); width: 34%; }
 .amis .reglages { margin-top: 6px; }
 .defis-attente { display: grid; gap: 8px; margin-bottom: 12px; }
-/* L'article de la semaine (Droit au but) : carte de l'accueil et fenêtre d'arrivée. */
-.hebdo { margin: 14px 0; padding: 16px; border-radius: 24px; background: var(--carte-haut, var(--banc-fort)); border: 1px solid var(--carte-bord, transparent); display: grid; gap: 8px; }
+/* L'article de la semaine (Droit au but) : carte repliable de l'accueil et fenêtre d'arrivée. */
+.hebdo { margin: 12px 14px 4px; border-radius: 24px; background: var(--carte-haut, var(--banc-fort)); border: 1px solid var(--carte-bord, transparent); overflow: hidden; }
+.hebdo-tete { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 16px; cursor: pointer; }
+.hebdo-tete:focus-visible { outline: 2px solid var(--or); outline-offset: -4px; border-radius: 24px; }
+.hebdo-tete-txt { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.hebdo-tete b { font: 600 20px/1.25 var(--titre, var(--ui)); color: var(--texte); transition: font-size .25s ease; }
+.hebdo.repliee .hebdo-tete b { font-size: 16px; }
+.hebdo-fait { font: 500 13px var(--ui); color: var(--texte-2); }
+.hebdo-chevron { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--banc-fort); color: var(--texte-2); transition: transform .25s ease; }
+.hebdo:not(.repliee) .hebdo-chevron { transform: rotate(180deg); }
+.hebdo-corps { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease; }
+.hebdo.repliee .hebdo-corps { grid-template-rows: 0fr; }
+.hebdo-corps > div { overflow: hidden; display: grid; gap: 8px; padding: 0 16px 16px; }
+.hebdo.repliee .hebdo-corps > div { padding-bottom: 0; visibility: hidden; }
 .hebdo-media { margin: 0; font: 600 13px var(--ui); color: var(--or); }
-.hebdo h2, .boite-hebdo h2 { margin: 0; font: 600 21px/1.25 var(--titre, var(--ui)); }
-.hebdo p:not(.hebdo-media), .boite-hebdo p:not(.hebdo-media) { margin: 0; font: 400 15px/1.45 var(--ui); color: var(--texte-2); }
+.boite-hebdo h2 { margin: 0; font: 600 21px/1.25 var(--titre, var(--ui)); }
+.hebdo-corps p, .boite-hebdo p:not(.hebdo-media) { margin: 0; font: 400 15px/1.45 var(--ui); color: var(--texte-2); }
 .hebdo .hebdo-conseil, .boite-hebdo .hebdo-conseil { color: var(--texte); }
-.hebdo button { margin-top: 4px; }
+.hebdo-corps button { margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) { .hebdo-corps, .hebdo-chevron, .hebdo-tete b { transition: none; } }
 .boite-hebdo { display: grid; gap: 10px; }
 .defi-attente { width: 100%; }
 

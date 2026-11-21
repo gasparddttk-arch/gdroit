@@ -1410,8 +1410,13 @@ async function execGroupe1(b, PORT, erreurs) {
     await p.waitForSelector('.resultats');
     const sv = await p.evaluate(() => Object.values(window.__app.etat().hebdo)[0]);
     assert(sv.fait && sv.meilleur === 8, 'exercice fait, 8 sur 8');
-    await p.evaluate(() => window.__app.aller('palais')); await p.waitForSelector('[data-hebdo-jouer]');
+    // Fait : la carte est repliée, avec le score ; on peut la déplier et la replier.
+    await p.evaluate(() => window.__app.aller('palais')); await p.waitForSelector('.hebdo.repliee [data-hebdo-plier][aria-expanded="false"]');
+    assert.match(await p.locator('.hebdo-fait').innerText(), /8 sur 8/);
+    await p.tap('[data-hebdo-plier]'); await p.waitForSelector('.hebdo:not(.repliee)');
     assert.match(await p.locator('[data-hebdo-jouer]').innerText(), /meilleur score : 8 sur 8/);
+    await p.tap('[data-hebdo-plier]'); await p.waitForSelector('.hebdo.repliee');
+    assert.equal(await p.evaluate(() => Object.values(window.__app.etat().hebdo)[0].repliee), true, 'le choix est gardé');
     assert.equal(await p.locator('.boite-hebdo').count(), 0, 'la fenêtre ne revient pas');
     await c.close();
     log('hebdo ok');

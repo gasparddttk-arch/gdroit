@@ -561,12 +561,23 @@ function cartePodium(r) {
 const lancerHebdo = () => { const a = articleCourant(); lancer({ type: 'mode', mode: 'hebdo', titre: `L’article de la semaine : ${a.titre}`, rounds: roundsHebdo(a) }); };
 function carteHebdo() {
   const a = articleCourant(); const sv = suiviHebdo(a.id); const n = a.questions.length;
-  return h('section', { class: 'hebdo', 'data-hebdo': a.id },
-    h('p', { class: 'hebdo-media' }, `L’article de la semaine · ${MEDIA.nom}`),
-    h('h2', {}, a.titre),
+  // Ouverte par défaut ; repliée une fois l'exercice fait, ou quand l'étudiant l'a enroulée.
+  const repliee = sv.repliee ?? sv.fait;
+  const carte = h('section', { class: `hebdo${repliee ? ' repliee' : ''}`, 'data-hebdo': a.id });
+  const corps = h('div', { class: 'hebdo-corps', id: `hebdo-${a.id}` }, h('div', {},
     ...presentationHebdo(),
     h('button', { class: sv.fait ? 'bouton-fantome' : 'bouton-or', 'data-hebdo-jouer': '', onClick: lancerHebdo },
-      sv.fait ? `Refaire l’exercice (meilleur score : ${sv.meilleur} sur ${n})` : `Faire l’exercice (${n} questions)`));
+      sv.fait ? `Refaire l’exercice (meilleur score : ${sv.meilleur} sur ${n})` : `Faire l’exercice (${n} questions)`)));
+  const tete = h('button', { class: 'hebdo-tete', 'data-hebdo-plier': '', 'aria-expanded': String(!repliee), 'aria-controls': `hebdo-${a.id}`, onClick: () => {
+    const plie = !carte.classList.toggle('repliee');
+    sv.repliee = !plie; sauver(); son('tap');
+    tete.setAttribute('aria-expanded', String(plie));
+  } },
+    h('span', { class: 'hebdo-tete-txt' }, h('span', { class: 'hebdo-media' }, `L’article de la semaine · ${MEDIA.nom}`), h('b', {}, a.titre),
+      sv.fait ? h('small', { class: 'hebdo-fait' }, `Fait : ${sv.meilleur} sur ${n}`) : null),
+    h('span', { class: 'hebdo-chevron', 'aria-hidden': 'true' }, svg('<svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>')));
+  carte.append(tete, corps);
+  return carte;
 }
 function fenetreHebdo() {
   const a = articleCourant(); const sv = suiviHebdo(a.id);
