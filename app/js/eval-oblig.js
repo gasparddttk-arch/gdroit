@@ -33,8 +33,8 @@ async function reconnaitre(zone, ctx, x) {
   const autres = melange(QUESTIONS.filter((y) => y.n !== x.n && !proche(y.cite, x.cite) && y.th !== x.th));
   const intrus = [];
   for (const y of [...memes, ...autres]) if (intrus.length < 3 && !intrus.some((t) => proche(t, y.cite))) intrus.push(y.cite);
-  const options = melange([{ t: x.cite, ok: true }, ...intrus.map((t) => ({ t, ok: false, w: `Ça sert pour la question ${QUESTIONS.find((y) => y.cite === t).n}.` }))]);
-  const r = await qcm(zone, ctx, { surtitre: 'Reconnaître', question: x.q, sousQuestion: 'Que faut-il citer en priorité ?', options, pourquoiBon: x.points.find((pt) => [...refs(x.cite)].some((r) => pt.toLowerCase().includes(String(r).toLowerCase()))) || x.points[0], classe: 'cmt-qcm' });
+  const options = melange([{ t: x.cite, ok: true }, ...intrus.map((t) => ({ t, ok: false, w: `C’est le repère de la question ${QUESTIONS.find((y) => y.cite === t).n} : ${QUESTIONS.find((y) => y.cite === t).q.replace(/^./, (c) => c.toLowerCase()).replace(/([^?])$/, '$1.')}` }))]);
+  const r = await qcm(zone, ctx, { surtitre: 'Reconnaître', question: x.q, sousQuestion: 'Quel repère retenir pour cette question ?', options, pourquoiBon: x.points.find((pt) => [...refs(x.cite)].some((r) => pt.toLowerCase().includes(String(r).toLowerCase()))) || x.points[0], classe: 'cmt-qcm' });
   return r.ok ? 1 : 0;
 }
 
