@@ -5,6 +5,7 @@ import { chouette, portes, reagir, plumes, codeEnvole, adjuge, precharger, POSE_
 import { lexouAnime, prechargerLexou } from './lexou.js';
 import { LAMPES, EFFETS, pieceDe } from './tour.js';
 import { jouerCommentaire, roundsCommentaire, arretPrioritaire, suiviCommentaire, COMMENTAIRES } from './commentaire.js';
+import { jouerHebdo, roundsHebdo, articleCourant, suiviHebdo, presentation as presentationHebdo, MEDIA } from './hebdo.js';
 import { jouerEval, roundsEval, suiviEval, progressionEval, evalOuverte, QUESTIONS, THEMES as THEMES_EVAL, NIVEAUX_EVAL } from './eval-oblig.js';
 import { son, reveillerAudio, surveillerAudio, appliquerSession, vibrer, rendreSon, NOMS_SONS } from './sons.js';
 import { remplacerEtat, choisirAnnee, ajouterSemaine, gagnerAppel, erreursOuvertes, carnetVisible, changerEquipe,
@@ -28,7 +29,7 @@ import { images, chargerImages, preparerImage, enregistrerImage, retirerImage } 
 import { noter as suivre, contexte } from './suivi.js';
 import { jouerFormule } from './formule.js';
 
-const TOUS_JEUX = { ...JEUX, commentaire: jouerCommentaire, evaltd: jouerEval, formule: jouerFormule, atelier: jouerAtelier, pouvoirs: jouerPouvoirs, nuancier: jouerNuancier, plume: jouerPlume, cas: jouerCas, remede: jouerRemede, frise: jouerFrise, appel: jouerAppel, flash: jouerFlash, plaide: jouerPlaide, trous: jouerTrous, express: jouerExpress, syllogisme: jouerSyllogisme, casnu: jouerCasNu,
+const TOUS_JEUX = { ...JEUX, commentaire: jouerCommentaire, evaltd: jouerEval, hebdo: jouerHebdo, formule: jouerFormule, atelier: jouerAtelier, pouvoirs: jouerPouvoirs, nuancier: jouerNuancier, plume: jouerPlume, cas: jouerCas, remede: jouerRemede, frise: jouerFrise, appel: jouerAppel, flash: jouerFlash, plaide: jouerPlaide, trous: jouerTrous, express: jouerExpress, syllogisme: jouerSyllogisme, casnu: jouerCasNu,
   tri: jouerTri, mot: jouerMot, rangement: jouerRangement, quiadit: jouerQuiADit, scanner: jouerScanner, memory: jouerMemory };
 
 // FAIRE APPEL : chaque fiche ratée revient sous une autre forme, une question rapide.
@@ -566,6 +567,43 @@ function cartePodium(r) {
   return carte;
 }
 
+// L'article de la semaine (Droit au but) : une carte sur l'accueil, et une fenêtre la première fois qu'un article arrive.
+const lancerHebdo = () => { const a = articleCourant(); lancer({ type: 'mode', mode: 'hebdo', titre: `L’article de la semaine : ${a.titre}`, rounds: roundsHebdo(a) }); };
+function carteHebdo() {
+  const a = articleCourant(); const sv = suiviHebdo(a.id); const n = a.questions.length;
+  // Ouverte par défaut ; repliée une fois l'exercice fait, ou quand l'étudiant l'a enroulée.
+  const repliee = sv.repliee ?? sv.fait;
+  const carte = h('section', { class: `hebdo${repliee ? ' repliee' : ''}`, 'data-hebdo': a.id });
+  const corps = h('div', { class: 'hebdo-corps', id: `hebdo-${a.id}` }, h('div', {},
+    ...presentationHebdo(),
+    h('button', { class: sv.fait ? 'bouton-fantome' : 'bouton-or', 'data-hebdo-jouer': '', onClick: lancerHebdo },
+      sv.fait ? `Refaire l’exercice (meilleur score : ${sv.meilleur} sur ${n})` : `Faire l’exercice (${n} questions)`)));
+  const tete = h('button', { class: 'hebdo-tete', 'data-hebdo-plier': '', 'aria-expanded': String(!repliee), 'aria-controls': `hebdo-${a.id}`, onClick: () => {
+    const plie = !carte.classList.toggle('repliee');
+    sv.repliee = !plie; sauver(); son('tap');
+    tete.setAttribute('aria-expanded', String(plie));
+  } },
+    h('span', { class: 'hebdo-tete-txt' }, h('span', { class: 'hebdo-media' }, `L’article de la semaine · ${MEDIA.nom}`), h('b', {}, a.titre),
+      sv.fait ? h('small', { class: 'hebdo-fait' }, `Fait : ${sv.meilleur} sur ${n}`) : null),
+    h('span', { class: 'hebdo-chevron', 'aria-hidden': 'true' }, svg('<svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>')));
+  carte.append(tete, corps);
+  return carte;
+}
+function fenetreHebdo() {
+  const a = articleCourant(); const sv = suiviHebdo(a.id);
+  // En test, la fenêtre ne s'ouvre que si on la demande (?hebdo), pour ne pas gêner les autres parcours.
+  const q = new URLSearchParams(location.search); if (q.has('test') && !q.has('hebdo')) return;
+  if (sv.vu || sv.fait || decouverteDue() || racine.querySelector('.voile')) return;
+  sv.vu = true; sauver();
+  const voile = h('div', { class: 'voile', onClick: (e) => { if (e.target === voile) voile.remove(); } },
+    h('div', { class: 'boite boite-hebdo', role: 'dialog', 'aria-label': 'L’article de la semaine' },
+      h('p', { class: 'hebdo-media' }, `Nouveau · ${MEDIA.nom}`),
+      h('h2', {}, a.titre),
+      ...presentationHebdo(),
+      h('button', { class: 'bouton-or', 'data-hebdo-fenetre': '', onClick: () => { voile.remove(); lancerHebdo(); } }, 'J’ai lu l’article, je commence'),
+      h('button', { class: 'bouton-lien', onClick: () => voile.remove() }, 'Plus tard : il reste sur l’accueil')));
+  document.body.append(voile);
+}
 function accueil() {
   const s = etat.serie; const j = jour();
   const fait = s.dernier === j;
@@ -616,6 +654,7 @@ function accueil() {
         h('span', { class: 'cta-txt' }, h('b', {}, 'Défi du jour'), h('small', { class: 'cta-sous' }, dus ? `5 épreuves, ${pluriel(dus, motFiche())} à revoir` : '5 épreuves, environ 5 minutes')),
         h('span', { class: 'cta-jouer', 'aria-hidden': 'true' }, svg('<svg viewBox="0 0 24 24" width="24" height="24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>'))),
       ),
+    carteHebdo(),
     h('section', { class: 'role role-duo' },
       ligneEntree('vers-examen', 'balance', 'Vers l’examen', 'Trois degrés et un partiel blanc', () => aller('examen'), 0),
       ligneEntree('vers-role', 'plan', 'Le rôle', 'Choisis ton exercice', () => aller('role'), 2.2)),
@@ -630,6 +669,7 @@ function accueil() {
     }).catch(() => {});
   }
 
+  setTimeout(() => { if (racine.querySelector('.tribune')) fenetreHebdo(); }, 600);
   const doitAnimerPalais = animerPalais;
   animerPalais = false;
   const mode = modeAnimation();
@@ -874,6 +914,7 @@ function choixGenre(m) {
 function lancerMode(m, genre = null) {
   if (m === 'commentaire') { lancerCommentaire(arretPrioritaire()); return; }
   if (m === 'evaltd') { lancerEval(); return; }
+  if (m === 'hebdo') { lancerHebdo(); return; }
   // En obligations, un exercice choisi puise dans tout le cours : les chambres rythment le défi et les audiences.
   // La formule puise dans toutes les chambres ouvertes : peu d'arrêts s'y prêtent.
   let zones = m === 'formule' && !estOblig() ? zonesOuvertes(ix) : zonesCours();
