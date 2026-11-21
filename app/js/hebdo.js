@@ -32,8 +32,8 @@ export const ARTICLES = [
       { q: 'De quel type de présomption s’agit-il ?', bonne: 'Une présomption simple, renversable par toute preuve contraire',
         fausses: ['Une présomption irréfragable, qu’aucune preuve ne peut renverser', 'Une présomption mixte, renversable par un seul moyen de preuve', 'Une simple recommandation, sans effet juridique'],
         pourquoi: 'Elle peut être renversée à tout moment par tout élément de preuve contraire.' },
-      { q: 'Vrai ou faux : avant cette loi, le policier qui faisait usage de son arme était déjà présumé avoir respecté le cadre légal.', bonne: 'Faux',
-        fausses: ['Vrai'], pourquoi: 'Selon l’article, il n’était pas présumé l’avoir respecté : c’est justement ce que la loi change.' },
+      { q: 'Vrai ou faux : avant cette loi, le policier qui faisait usage de son arme était présumé avoir respecté le cadre légal.', bonne: 'Faux',
+        fausses: ['Vrai'], pourquoi: 'Jusqu’à présent, il n’était pas présumé avoir respecté le cadre légal : c’est ce que la loi change.' },
     ],
   },
 ];
