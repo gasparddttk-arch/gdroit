@@ -5,6 +5,7 @@
 import subprocess, sys, tempfile, pathlib
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 
 video, nom, debut, fin = sys.argv[1], sys.argv[2], float(sys.argv[3]), float(sys.argv[4])
 fond = sys.argv[5] if len(sys.argv) > 5 else 'vert'
@@ -26,6 +27,12 @@ def detourer(p):
     if fond == 'vert': a[..., 1] = np.minimum(g, np.maximum(r, b) + 8)
     else:
         m = np.maximum(g + 8, 0); a[..., 0] = np.minimum(r, m + (r - b).clip(0)); a[..., 2] = np.minimum(b, m + (b - r).clip(0))
+    # Efface les petites taches isolées (paillettes, bruit) qui élargiraient le cadrage.
+    zones, nb = ndimage.label(alpha > 0.15)
+    if nb > 1:
+        tailles = ndimage.sum(np.ones_like(alpha), zones, range(1, nb + 1))
+        petites = np.isin(zones, np.nonzero(tailles < alpha.size * 0.0005)[0] + 1)
+        alpha[petites] = 0
     rgba = np.dstack([a, alpha * 255]).astype(np.uint8)
     return Image.fromarray(rgba, 'RGBA')
 

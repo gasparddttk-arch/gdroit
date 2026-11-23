@@ -16,6 +16,14 @@ export const ANIMATIONS = {
   // Skins animés (boutique et Palais), tirés des vidéos Gemini par scripts/planches.py.
   goumin: { l: 332, h: 420, images: 120, boucle: true },
   'six-sept': { l: 469, h: 420, images: 120, boucle: true },
+  performative: { l: 366, h: 420, images: 90, boucle: true },
+  survet: { l: 368, h: 420, images: 90, boucle: true },
+  bosslady: { l: 337, h: 420, images: 90, boucle: true },
+  loco: { l: 383, h: 420, images: 90, boucle: true },
+  nana: { l: 441, h: 420, images: 90, boucle: true },
+  alcoolique: { l: 371, h: 420, images: 90, boucle: true },
+  tung: { l: 398, h: 420, images: 90, boucle: true },
+  noel: { l: 346, h: 420, images: 90, boucle: true },
 };
 
 // Charge et décode toutes les planches d'une animation ; rejette si l'une manque (hors ligne).

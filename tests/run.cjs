@@ -833,6 +833,15 @@ async function execGroupe1(b, PORT, erreurs) {
     await p.waitForSelector('.boite-skin .lexou-anime.pret');
     assert.equal(await p.locator('.boite-skin .skin-rarete').innerText(), 'Classique, animé');
     await p.waitForTimeout(3000);
+    // Chaque skin de la boutique a désormais son film : l'aperçu doit se charger pour tous.
+    for (const id of ['performative', 'survet', 'bosslady', 'loco', 'nana', 'alcoolique', 'tung', 'noel']) {
+      await p.locator('.boite-skin .bouton-lien').click();
+      await p.waitForSelector('.boite-skin', { state: 'detached' });
+      await p.locator(`.skin-carte[data-skin-carte="${id}"]`).first().scrollIntoViewIfNeeded();
+      await p.locator(`.skin-carte[data-skin-carte="${id}"]`).first().click();
+      await p.waitForSelector('.boite-skin .lexou-anime.pret');
+      await p.waitForTimeout(1500);
+    }
     await c.close();
     log('skins animes ok');
   }
