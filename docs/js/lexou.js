@@ -14,8 +14,16 @@ export const ANIMATIONS = {
   // Série perdue : Lexou regarde sa montre, s'énerve, puis colle son bec contre l'écran (cadre fixe, gros plan compris).
   colere: { l: 533, h: 480, images: 90, boucle: false, cadre: true },
   // Skins animés (boutique et Palais), tirés des vidéos Gemini par scripts/planches.py.
-  goumin: { l: 332, h: 420, images: 120, boucle: true },
+  goumin: { l: 409, h: 420, images: 90, boucle: true },
   'six-sept': { l: 469, h: 420, images: 120, boucle: true },
+  performative: { l: 335, h: 420, images: 90, boucle: true },
+  survet: { l: 389, h: 420, images: 120, boucle: true },
+  bosslady: { l: 277, h: 420, images: 90, boucle: true },
+  loco: { l: 318, h: 420, images: 90, boucle: true },
+  nana: { l: 362, h: 420, images: 90, boucle: true },
+  alcoolique: { l: 397, h: 420, images: 90, boucle: true },
+  tung: { l: 388, h: 420, images: 90, boucle: true },
+  noel: { l: 270, h: 420, images: 30, boucle: true },
 };
 
 // Charge et décode toutes les planches d'une animation ; rejette si l'une manque (hors ligne).
