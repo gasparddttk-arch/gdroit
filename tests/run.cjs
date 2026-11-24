@@ -1423,6 +1423,54 @@ async function execGroupe1(b, PORT, erreurs) {
     log('eval oblig ok');
   }
 
+  if (matchSeul('galop admin')) {
+    // Administratif, équipe 2 : la chambre temporaire du galop, jusqu'au 7 décembre 2026.
+    const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
+    const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
+    const ouvrir = async (jour, equipe) => {
+      await p.goto(`${URLB}?test&jour=${jour}&matiere=admin&equipe=${equipe}`); await p.waitForSelector('.tribune');
+      await p.evaluate(() => window.__app.ouvrirMatiere('admin')); await p.waitForSelector('.tribune');
+      await p.evaluate(() => { window.__app.etat().reglages.bullesVues = { commentaire: true }; window.__app.aller('carte'); }); await p.waitForSelector('.tour-ecran');
+    };
+    await ouvrir('2026-12-01', 1); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'pas en équipe 1');
+    await ouvrir('2026-12-08', 2); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'fermée après le 7 décembre');
+    await ouvrir('2026-12-07', 2);
+    await p.waitForSelector('.tour-etage[data-zone="td"][data-etat="cours"]');
+    await p.evaluate(() => document.querySelector('.tour-etage[data-zone="td"] .tour-boite').click()); await p.waitForSelector('.cmt-arrets');
+    const D = await p.evaluate(async () => { const m = await import('./js/galop-admin-data.js'); return m.QUESTIONS.map((x) => ({ n: x.n, mots: [...x.trou.matchAll(/\{\{(.+?)\}\}/g)].map((y) => y[1]), points: x.points })); });
+    assert.equal(await p.locator('.cmt-arret').count(), D.length, 'toutes les questions listées');
+    assert.equal(await p.locator('.cmt-liste h1').innerText(), 'Galop');
+    await p.tap('[data-cmt-prio]');
+    for (let k = 0; k < 20; k++) {
+      await p.waitForSelector('.cmt-qcm .options:not(.repondu) .option, .cmt-trous .cmt-trou:not([disabled]), .resultats');
+      if (await p.locator('.resultats').count()) break;
+      if (await p.locator('.cmt-trous').count()) {
+        const n = Number((await p.locator('.cmt-ref').innerText()).match(/Question (\d+)/)[1]);
+        for (const m of D.find((x) => x.n === n).mots) await p.locator('.cmt-reserve .cmt-morceau').filter({ hasText: new RegExp(`^${m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).first().tap();
+        await p.tap('.pied .cta'); assert.equal(await p.locator('.cmt-trou.faux').count(), 0, `trous de la question ${n}`);
+        await p.tap('.pied .cta');
+      } else { await p.tap('.options:not(.repondu) .option[data-ok="true"]'); await p.tap('.pied .cta'); }
+    }
+    await p.waitForSelector('.resultats');
+    const suivis = await p.evaluate(() => window.__app.etat().galopAdmin);
+    assert.deepEqual(Object.keys(suivis).filter((n) => suivis[n].seances).map(Number).sort((a, b) => a - b), [1, 2, 3, 4], 'les quatre premières questions');
+    assert.equal(await p.evaluate(() => window.__app.etat().evalOblig), undefined, 'le suivi d’obligations reste à part');
+    // Restitution complète d'une question d'arrêt.
+    await p.evaluate(() => { window.__app.etat().galopAdmin[44] = { niveau: 2, seances: 2, scores: {} }; window.__app.aller('carte'); });
+    await p.waitForSelector('.tour-ecran');
+    await p.evaluate(() => document.querySelector('.tour-etage[data-zone="td"] .tour-boite').click()); await p.waitForSelector('.cmt-arrets');
+    await p.tap('[data-cmt="44"]'); await p.waitForSelector('.cmt-ecrit');
+    await p.locator('.cmt-ecrit').fill(D.find((x) => x.n === 44).points.join('. '));
+    await p.tap('.pied .cta'); await p.waitForSelector('.eval-points');
+    assert.equal(await p.locator('.eval-points li.faux').count(), 0, 'tous les points retrouvés');
+    await debordement(p, 'restitution galop');
+    await p.screenshot({ path: 'tests/captures/galop-restitution.png' });
+    await p.evaluate(() => { const e = window.__app.etat(); for (const x of Object.keys(e.galopAdmin)) delete e.galopAdmin[x]; for (let n = 1; n <= 57; n++) e.galopAdmin[n] = { niveau: 2, seances: 2, scores: {} }; window.__app.aller('carte'); });
+    await p.waitForSelector('.tour-etage[data-zone="td"][data-etat="gagnee"]');
+    await c.close();
+    log('galop admin ok');
+  }
+
   if (matchSeul('hebdo')) {
     // L'article de la semaine : fenêtre à l'arrivée (une fois), carte sur l'accueil, exercice, score gardé.
     const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
