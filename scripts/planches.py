@@ -2,7 +2,7 @@
 # Usage : python3 scripts/planches.py video.mp4 nom debut fin [vert|magenta] [hauteur]
 # Écrit app/img/lexou/<nom>-<k>.webp (30 images par planche, 10 par ligne, 12 images/s)
 # et affiche la ligne à ajouter dans ANIMATIONS (lexou.js).
-import subprocess, sys, tempfile, pathlib
+import subprocess, sys, tempfile, pathlib, os
 import numpy as np
 from PIL import Image
 from scipy import ndimage
@@ -22,14 +22,16 @@ def detourer(p):
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     # Écart à la couleur du fond : plus il est grand, plus le pixel appartient au personnage.
     ecart = (g - np.maximum(r, b)) if fond == 'vert' else (np.minimum(r, b) - g)
-    alpha = np.clip(1 - (ecart - 30) / 60, 0, 1)
+    # SEUIL : écart au-dessous duquel le pixel est entièrement gardé (fond vert terne : SEUIL=10 LARGEUR=40).
+    seuil, largeur = float(os.environ.get('SEUIL', 30)), float(os.environ.get('LARGEUR', 60))
+    alpha = np.clip(1 - (ecart - seuil) / largeur, 0, 1)
     # Retire le reflet de fond sur les bords.
     if fond == 'vert': a[..., 1] = np.minimum(g, np.maximum(r, b) + 8)
     else:
         m = np.maximum(g + 8, 0); a[..., 0] = np.minimum(r, m + (r - b).clip(0)); a[..., 2] = np.minimum(b, m + (b - r).clip(0))
     # Efface les petites taches isolées (paillettes, bruit) qui élargiraient le cadrage.
     zones, nb = ndimage.label(alpha > 0.15)
-    if nb > 1:
+    if nb > 1 and not os.environ.get('GARDER_TACHES'):  # GARDER_TACHES=1 : étincelles voulues (feu d'artifice)
         tailles = ndimage.sum(np.ones_like(alpha), zones, range(1, nb + 1))
         petites = np.isin(zones, np.nonzero(tailles < alpha.size * 0.0005)[0] + 1)
         alpha[petites] = 0
