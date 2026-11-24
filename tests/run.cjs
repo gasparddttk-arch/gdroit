@@ -1251,7 +1251,7 @@ async function execGroupe1(b, PORT, erreurs) {
   if (matchSeul('tour')) {
     const c = await b.newContext({ ...devices['iPhone 13'], locale: 'fr-FR', serviceWorkers: 'block' });
     const p = await c.newPage(); p.on('pageerror', (e) => erreurs.push(e.message));
-    await p.goto(URLB + '?test'); await p.waitForSelector('.tribune');
+    await p.goto(URLB + '?test&jour=2026-12-20'); await p.waitForSelector('.tribune'); // hors chambre temporaire
     await p.evaluate(() => { const e = window.__app.etat(); e.zones.ouvertes = [1, 2, 3, 4, 5]; e.zones.gagnees = [1, 2, 3, 4]; e.zones.parfaites = [2]; window.__app.aller('carte'); });
     await p.waitForSelector('.tour-ecran');
     const n = await p.evaluate(() => window.__app.ix.zones.length);
@@ -1327,7 +1327,7 @@ async function execGroupe1(b, PORT, erreurs) {
     await p.goto(URLB + '?test&jour=2026-11-18'); await p.waitForSelector('.tribune');
     // Réservé au droit administratif, équipe 1, jusqu'à l'évaluation du 19 novembre 2026.
     await p.evaluate(() => { const e = window.__app.etat(); e.matiere = 'admin'; e.equipe = 2; window.__app.aller('carte'); });
-    await p.waitForSelector('.tour-ecran'); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'pas en équipe 2');
+    await p.waitForSelector('.tour-ecran'); assert(await p.waitForFunction(() => document.querySelectorAll('.tour-ecran').length === 1 && !document.querySelector('.tour-etage[data-zone="td"]'), null, { timeout: 4000 }).then(() => true, () => false), 'pas en équipe 2');
     await p.evaluate(() => { const e = window.__app.etat(); e.equipe = 1; e.reglages.bullesVues = { commentaire: true }; window.__app.aller('palais'); window.__app.aller('carte'); });
     await p.waitForSelector('.tour-etage[data-zone="td"][data-etat="cours"]');
     assert.equal(await p.locator('[data-mode="commentaire"]').count(), 0, 'rien dans le rôle');
@@ -1373,13 +1373,14 @@ async function execGroupe1(b, PORT, erreurs) {
     const ouvrir = async (jour, equipe) => {
       await p.goto(`${URLB}?test&jour=${jour}&matiere=oblig&equipe=${equipe}`); await p.waitForSelector('.tribune');
       await p.evaluate(() => window.__app.ouvrirMatiere('oblig')); await p.waitForSelector('.tribune');
-      await p.evaluate(() => { window.__app.etat().reglages.bullesVues = { commentaire: true }; window.__app.aller('carte'); }); await p.waitForSelector('.tour-ecran');
+      await p.waitForFunction((eq) => window.__app.etat().matiere === 'oblig' && window.__app.etat().equipe === eq, equipe);
+      await p.evaluate(() => { window.__app.etat().reglages.bullesVues = { commentaire: true }; window.__app.aller('carte'); }); await p.waitForSelector('.tour-ecran .tour-etage');
     };
-    await ouvrir('2026-11-20', 2); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'pas en équipe 2');
-    await ouvrir('2026-11-30', 1); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'fermée après le 29 novembre');
+    await ouvrir('2026-11-20', 2); assert(await p.waitForFunction(() => document.querySelectorAll('.tour-ecran').length === 1 && !document.querySelector('.tour-etage[data-zone="td"]'), null, { timeout: 4000 }).then(() => true, () => false), 'pas en équipe 2');
+    await ouvrir('2026-11-30', 1); assert(await p.waitForFunction(() => document.querySelectorAll('.tour-ecran').length === 1 && !document.querySelector('.tour-etage[data-zone="td"]'), null, { timeout: 4000 }).then(() => true, () => false), 'fermée après le 29 novembre');
     // Le droit administratif a perdu sa chambre bonus : l'évaluation est passée.
     await p.evaluate(() => { const e = window.__app.etat(); e.matiere = 'admin'; window.__app.aller('carte'); }); await p.waitForSelector('.tour-ecran');
-    assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'plus de chambre bonus en administratif');
+    assert(await p.waitForFunction(() => document.querySelectorAll('.tour-ecran').length === 1 && !document.querySelector('.tour-etage[data-zone="td"]'), null, { timeout: 4000 }).then(() => true, () => false), 'plus de chambre bonus en administratif');
     await ouvrir('2026-11-29', 1);
     await p.waitForSelector('.tour-etage[data-zone="td"][data-etat="cours"]');
     await p.evaluate(() => document.querySelector('.tour-etage[data-zone="td"] .tour-boite').click()); await p.waitForSelector('.cmt-arrets');
@@ -1430,10 +1431,12 @@ async function execGroupe1(b, PORT, erreurs) {
     const ouvrir = async (jour, equipe) => {
       await p.goto(`${URLB}?test&jour=${jour}&matiere=admin&equipe=${equipe}`); await p.waitForSelector('.tribune');
       await p.evaluate(() => window.__app.ouvrirMatiere('admin')); await p.waitForSelector('.tribune');
-      await p.evaluate(() => { window.__app.etat().reglages.bullesVues = { commentaire: true }; window.__app.aller('carte'); }); await p.waitForSelector('.tour-ecran');
+      await p.waitForFunction((eq) => window.__app.etat().matiere === 'admin' && window.__app.etat().equipe === eq, equipe);
+      await p.evaluate(() => { window.__app.etat().reglages.bullesVues = { commentaire: true }; window.__app.aller('carte'); }); await p.waitForSelector('.tour-ecran .tour-etage');
     };
-    await ouvrir('2026-12-01', 1); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'pas en équipe 1');
-    await ouvrir('2026-12-08', 2); assert.equal(await p.locator('.tour-etage[data-zone="td"]').count(), 0, 'fermée après le 7 décembre');
+    await ouvrir('2026-12-01', 1); assert(await p.waitForFunction(() => document.querySelectorAll('.tour-ecran').length === 1 && !document.querySelector('.tour-etage[data-zone="td"]'), null, { timeout: 4000 }).then(() => true, () => false), 'pas en équipe 1');
+    await ouvrir('2026-11-23', 2); assert(await p.waitForFunction(() => document.querySelectorAll('.tour-ecran').length === 1 && !document.querySelector('.tour-etage[data-zone="td"]'), null, { timeout: 4000 }).then(() => true, () => false), 'pas avant le 24 novembre');
+    await ouvrir('2026-12-08', 2); assert(await p.waitForFunction(() => document.querySelectorAll('.tour-ecran').length === 1 && !document.querySelector('.tour-etage[data-zone="td"]'), null, { timeout: 4000 }).then(() => true, () => false), 'fermée après le 7 décembre');
     await ouvrir('2026-12-07', 2);
     await p.waitForSelector('.tour-etage[data-zone="td"][data-etat="cours"]');
     await p.evaluate(() => document.querySelector('.tour-etage[data-zone="td"] .tour-boite').click()); await p.waitForSelector('.cmt-arrets');

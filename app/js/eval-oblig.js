@@ -13,10 +13,10 @@ import * as GALOP from './galop-admin-data.js';
 export const NIVEAUX_EVAL = ['À découvrir', 'Reconnue', 'Maîtrisée', 'Restituée'];
 // En test, ?jour=AAAA-MM-JJ fixe la date du jour (pour vérifier l'ouverture et la fermeture des chambres temporaires).
 const jourDeTest = () => { const q = new URLSearchParams(location.search); return q.has('test') && q.get('jour') ? new Date(`${q.get('jour')}T12:00:00+01:00`) : null; };
-export const evalOuverte = (maintenant = jourDeTest() || new Date(), fin = OBLIG.EVAL_FIN) => {
+export const evalOuverte = (maintenant = jourDeTest() || new Date(), fin = OBLIG.EVAL_FIN, debut = '') => {
   const j = new Date(maintenant.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
   const jour = `${j.getFullYear()}-${String(j.getMonth() + 1).padStart(2, '0')}-${String(j.getDate()).padStart(2, '0')}`;
-  return jour <= fin;
+  return jour >= debut && jour <= fin;
 };
 // Une chambre de questions de cours : la même mécanique pour l'évaluation d'obligations et le galop d'administratif.
 const TROU = /\{\{(.+?)\}\}/g;
@@ -177,4 +177,4 @@ function creerEval({ cle, type, QUESTIONS, PIEGES, THEMES, aideRestituer }) {
 const EVAL = creerEval({ cle: 'evalOblig', type: 'evaltd', ...OBLIG, aideRestituer: 'Écris ta réponse comme à l’évaluation : notion, textes, arrêts, ce qu’a changé la réforme.' });
 export const { jouer: jouerEval, rounds: roundsEval, suivi: suiviEval, progression: progressionEval, QUESTIONS, THEMES } = EVAL;
 export const GALOP_ADMIN = creerEval({ cle: 'galopAdmin', type: 'galop', ...GALOP, aideRestituer: 'Écris ta réponse comme au galop : la notion, les textes, les arrêts avec leur date et ce qu’ils ont changé.' });
-export const GALOP_FIN = GALOP.GALOP_FIN;
+export const { GALOP_DEBUT, GALOP_FIN } = GALOP;

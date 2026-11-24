@@ -6,7 +6,7 @@ import { lexouAnime, prechargerLexou } from './lexou.js';
 import { LAMPES, EFFETS, pieceDe } from './tour.js';
 import { jouerCommentaire, roundsCommentaire, arretPrioritaire, suiviCommentaire, COMMENTAIRES } from './commentaire.js';
 import { jouerHebdo, roundsHebdo, articleCourant, suiviHebdo, presentation as presentationHebdo, MEDIA } from './hebdo.js';
-import { jouerEval, roundsEval, suiviEval, progressionEval, evalOuverte, QUESTIONS, THEMES as THEMES_EVAL, NIVEAUX_EVAL, GALOP_ADMIN, GALOP_FIN } from './eval-oblig.js';
+import { jouerEval, roundsEval, suiviEval, progressionEval, evalOuverte, QUESTIONS, THEMES as THEMES_EVAL, NIVEAUX_EVAL, GALOP_ADMIN, GALOP_DEBUT, GALOP_FIN } from './eval-oblig.js';
 import { son, reveillerAudio, surveillerAudio, appliquerSession, vibrer, rendreSon, NOMS_SONS } from './sons.js';
 import { remplacerEtat, choisirAnnee, ajouterSemaine, gagnerAppel, erreursOuvertes, carnetVisible, changerEquipe,
   SCEAU_REUSSITE, SCEAU_FICHES, PRIME_MAITRISE, etat, M, charger, sauver, jour, lundi, rang, rangGeneral, verifierSerie, validerJour, relever, prixForclusion, noter, niveau, aRevoir, aRattraper,
@@ -805,7 +805,7 @@ const SALLE_GALOP = {
   pret: 'Tout restitué de mémoire. Prêt pour le galop.',
 };
 function salleTD() {
-  if (etat.matiere === 'admin' && etat.equipe === 2 && evalOuverte(undefined, GALOP_FIN)) return SALLE_GALOP;
+  if (etat.matiere === 'admin' && etat.equipe === 2 && evalOuverte(undefined, GALOP_FIN, GALOP_DEBUT)) return SALLE_GALOP;
   if (etat.equipe !== 1) return null;
   if (etat.matiere === 'admin' && evalOuverte(undefined, CMT_FIN)) return SALLE_CMT;
   if (etat.matiere === 'oblig' && evalOuverte()) return SALLE_EVAL;

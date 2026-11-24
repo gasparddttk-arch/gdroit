@@ -3,6 +3,7 @@
 // transmis par une étudiante de l'équipe 2. Mêmes champs que l'évaluation d'obligations : cite (le repère à citer,
 // pour le QCM), trou (phrase clé, mots entre {{ }} à replacer), points (la réponse attendue, pour la restitution).
 // Les questions marquées a: true portent sur un arrêt des fiches.
+export const GALOP_DEBUT = '2026-11-24'; // ouverture de la chambre
 export const GALOP_FIN = '2026-12-07'; // fin du galop ; la chambre disparaît le lendemain
 export const THEMES = {
   1: 'Caractères et domaine du droit administratif', 2: 'La soumission de l’administration au droit',

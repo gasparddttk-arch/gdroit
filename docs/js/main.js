@@ -6,7 +6,7 @@ import { lexouAnime, prechargerLexou } from './lexou.js';
 import { LAMPES, EFFETS, pieceDe } from './tour.js';
 import { jouerCommentaire, roundsCommentaire, arretPrioritaire, suiviCommentaire, COMMENTAIRES } from './commentaire.js';
 import { jouerHebdo, roundsHebdo, articleCourant, suiviHebdo, presentation as presentationHebdo, MEDIA } from './hebdo.js';
-import { jouerEval, roundsEval, suiviEval, progressionEval, evalOuverte, QUESTIONS, THEMES as THEMES_EVAL, NIVEAUX_EVAL } from './eval-oblig.js';
+import { jouerEval, roundsEval, suiviEval, progressionEval, evalOuverte, QUESTIONS, THEMES as THEMES_EVAL, NIVEAUX_EVAL, GALOP_ADMIN, GALOP_DEBUT, GALOP_FIN } from './eval-oblig.js';
 import { son, reveillerAudio, surveillerAudio, appliquerSession, vibrer, rendreSon, NOMS_SONS } from './sons.js';
 import { remplacerEtat, choisirAnnee, ajouterSemaine, gagnerAppel, erreursOuvertes, carnetVisible, changerEquipe,
   SCEAU_REUSSITE, SCEAU_FICHES, PRIME_MAITRISE, etat, M, charger, sauver, jour, lundi, rang, rangGeneral, verifierSerie, validerJour, relever, prixForclusion, noter, niveau, aRevoir, aRattraper,
@@ -29,7 +29,7 @@ import { images, chargerImages, preparerImage, enregistrerImage, retirerImage } 
 import { noter as suivre, contexte } from './suivi.js';
 import { jouerFormule } from './formule.js';
 
-const TOUS_JEUX = { ...JEUX, commentaire: jouerCommentaire, evaltd: jouerEval, hebdo: jouerHebdo, formule: jouerFormule, atelier: jouerAtelier, pouvoirs: jouerPouvoirs, nuancier: jouerNuancier, plume: jouerPlume, cas: jouerCas, remede: jouerRemede, frise: jouerFrise, appel: jouerAppel, flash: jouerFlash, plaide: jouerPlaide, trous: jouerTrous, express: jouerExpress, syllogisme: jouerSyllogisme, casnu: jouerCasNu,
+const TOUS_JEUX = { ...JEUX, commentaire: jouerCommentaire, evaltd: jouerEval, galop: GALOP_ADMIN.jouer, hebdo: jouerHebdo, formule: jouerFormule, atelier: jouerAtelier, pouvoirs: jouerPouvoirs, nuancier: jouerNuancier, plume: jouerPlume, cas: jouerCas, remede: jouerRemede, frise: jouerFrise, appel: jouerAppel, flash: jouerFlash, plaide: jouerPlaide, trous: jouerTrous, express: jouerExpress, syllogisme: jouerSyllogisme, casnu: jouerCasNu,
   tri: jouerTri, mot: jouerMot, rangement: jouerRangement, quiadit: jouerQuiADit, scanner: jouerScanner, memory: jouerMemory };
 
 // FAIRE APPEL : chaque fiche ratée revient sous une autre forme, une question rapide.
@@ -768,6 +768,7 @@ function ecranRole() {
 // LES CHAMBRES TEMPORAIRES « ÉVALUATION TD » : une seule à la fois, décrite par salleTD().
 // Droit administratif (équipe 1) : les commentaires d'arrêt, évaluation passée le 19 novembre 2026.
 // Droit des obligations (équipe 1) : les 59 questions de cours, jusqu'au 29 novembre 2026.
+// Droit administratif (équipe 2) : le galop, cours et arrêts des fiches 1 à 6, jusqu'au 7 décembre 2026.
 const CMT_FIN = '2026-11-19';
 function lancerCommentaire(c) {
   lancer({ type: 'mode', mode: 'commentaire', titre: `Commentaire : ${c.nom}`, rounds: roundsCommentaire(c.id) });
@@ -793,7 +794,18 @@ const SALLE_EVAL = {
   texte: () => `${QUESTIONS.length} questions de cours, jusqu’au 29 novembre. Chaque séance en reprend quatre, les moins sûres d’abord : reconnaître ce qu’il faut citer, compléter la phrase clé, puis restituer la réponse de mémoire, avec une épreuve de pièges au milieu. La salle est validée quand toutes sont au moins « Maîtrisée ».`,
   pret: 'Les 59 questions restituées. Prêt pour l’évaluation.',
 };
+const lancerGalop = (n = null) => lancer({ type: 'mode', mode: 'galop', titre: n ? `Question ${n}` : 'Galop', rounds: GALOP_ADMIN.rounds(n) });
+const SALLE_GALOP = {
+  titre: 'Galop : cours et arrêts', court: 'galop', unite: 'question', maitrise: 'maîtrisée', niveaux: NIVEAUX_EVAL,
+  prog: GALOP_ADMIN.progression,
+  elements: () => GALOP_ADMIN.QUESTIONS.map((x) => ({ cle: String(x.n), nom: `${x.n}. ${x.q}`, ref: GALOP_ADMIN.THEMES[x.th], detail: `Séance ${x.th} · ${GALOP_ADMIN.THEMES[x.th]}`, niveau: GALOP_ADMIN.suivi(x.n).niveau, lancer: () => lancerGalop(x.n) })),
+  reviser: () => lancerGalop(),
+  premier: () => 'Lancer une séance',
+  texte: () => `${GALOP_ADMIN.QUESTIONS.length} questions sur le cours et les arrêts des fiches 1 à 6, jusqu’au 7 décembre. Chaque séance en reprend quatre, les moins sûres d’abord : reconnaître l’arrêt ou le texte à citer, compléter la phrase clé, puis restituer la réponse de mémoire, avec une épreuve de pièges au milieu. La salle est validée quand toutes sont au moins « Maîtrisée ».`,
+  pret: 'Tout restitué de mémoire. Prêt pour le galop.',
+};
 function salleTD() {
+  if (etat.matiere === 'admin' && etat.equipe === 2 && evalOuverte(undefined, GALOP_FIN, GALOP_DEBUT)) return SALLE_GALOP;
   if (etat.equipe !== 1) return null;
   if (etat.matiere === 'admin' && evalOuverte(undefined, CMT_FIN)) return SALLE_CMT;
   if (etat.matiere === 'oblig' && evalOuverte()) return SALLE_EVAL;
@@ -806,7 +818,7 @@ const pointsNiveau = (niveau, noms) => h('span', { class: 'cmt-niveau', 'aria-la
 function ecranCommentaires() {
   const S = salleTD(); if (!S) { aller('carte'); return; }
   montrer(barreHaut(), h('button', { class: 'bouton-matiere', onClick: () => { son('retour'); fixerSens('arriere'); aller('carte'); } }, icone('retour', 18), 'Les chambres'),
-    h('section', { class: 'role cmt-liste' }, h('p', { class: 'surtitre' }, 'Chambre bonus'), h('h1', {}, 'Évaluation TD'),
+    h('section', { class: 'role cmt-liste' }, h('p', { class: 'surtitre' }, 'Chambre bonus'), h('h1', {}, S.court === 'galop' ? 'Galop' : 'Évaluation TD'),
       h('p', { class: 'page-sous' }, S.texte()),
       h('button', { class: 'bouton-or', 'data-cmt-prio': '', onClick: () => S.reviser() }, S.premier()),
       h('ul', { class: 'cmt-arrets' }, S.elements().map((e) => h('li', {}, h('button', { class: 'cmt-arret', 'data-cmt': e.cle, onClick: () => e.lancer() },
@@ -914,6 +926,7 @@ function choixGenre(m) {
 function lancerMode(m, genre = null) {
   if (m === 'commentaire') { lancerCommentaire(arretPrioritaire()); return; }
   if (m === 'evaltd') { lancerEval(); return; }
+  if (m === 'galop') { lancerGalop(); return; }
   if (m === 'hebdo') { lancerHebdo(); return; }
   // En obligations, un exercice choisi puise dans tout le cours : les chambres rythment le défi et les audiences.
   // La formule puise dans toutes les chambres ouvertes : peu d'arrêts s'y prêtent.
@@ -1393,7 +1406,7 @@ function carteListe() {
   montrer(barreHaut(), h('section', { class: 'page page-chambres' },
     h('div', { class: 'chambres-tete' }, h('h1', {}, 'Chambres'), h('span', {}, `${audiences} audience${audiences > 1 ? 's' : ''} sur ${parcours.length}`)),
     h('button', { class: 'bouton-lien vers-tour', 'data-vers-tour': '', onClick: () => changerVueChambres('tour') }, 'Voir la tour'),
-    commentairesDispo() ? h('button', { class: 'bouton-fantome vers-td', 'data-vers-td': '', onClick: () => ecranCommentaires() }, `Chambre bonus : évaluation TD (${progressionTD().acquis} sur ${progressionTD().total})`) : null,
+    commentairesDispo() ? h('button', { class: 'bouton-fantome vers-td', 'data-vers-td': '', onClick: () => ecranCommentaires() }, `Chambre bonus : ${salleTD().court || 'évaluation TD'} (${progressionTD().acquis} sur ${progressionTD().total})`) : null,
     h('p', { class: 'page-sous' }, estConstit() ? `${matiereDe(etat.matiere).nom}, ${ETIQUETTE_CONSTIT}` : estIntro() ? matiereDe(etat.matiere).nom : `${matiereDe(etat.matiere).nom}, équipe ${etat.equipe}`), plan));
 }
 
