@@ -118,6 +118,29 @@ function skinVivant(id, { taille = 236, classe = '', danse = false } = {}) {
   if (film && modeAnimation() === 'complet') return lexouAnime(film, { taille, classe, repli: hibouSkin(id, { taille }) });
   return hibouSkin(id, { taille, classe, danse });
 }
+// Les décors de saison : la guirlande en décembre, la neige et l'écharpe de décembre à janvier, le bureau le soir.
+function maintenantAccueil() {
+  const q = new URLSearchParams(location.search);
+  return q.has('test') && q.get('jour') ? new Date(`${q.get('jour')}T${q.get('heure') || '12'}:00:00+01:00`) : new Date();
+}
+const enDecembre = (d) => d.getMonth() === 11;
+const enHiver = (d) => d.getMonth() === 11 || d.getMonth() === 0;
+const leSoir = (d) => d.getHours() >= 20 || d.getHours() < 6;
+function lexouAccueil() {
+  const d = maintenantAccueil();
+  if (leSoir(d)) return 'bureau';
+  if (enHiver(d)) return Math.random() < 0.5 ? 'echarpe' : Math.random() < 0.5 ? 'lecture' : 'plume';
+  return Math.random() < 0.5 ? 'lecture' : 'plume';
+}
+function decorSaison() {
+  const d = maintenantAccueil();
+  const flocons = enHiver(d) && modeAnimation() !== 'non'
+    ? h('span', { class: 'neige', 'aria-hidden': 'true' }, Array.from({ length: 16 }, (_, i) => h('i', { style: `--x:${(i * 37) % 100}%;--d:${7 + (i * 5) % 6}s;--r:${-(i * 1.3) % 9}s;--t:${3 + (i % 3) * 2}px` })))
+    : null;
+  const guirlande = enDecembre(d) ? h('img', { class: 'guirlande', src: 'img/guirlande.webp', alt: '', 'aria-hidden': 'true', draggable: 'false' }) : null;
+  return [flocons, guirlande];
+}
+
 function lexouVideoPossible() {
   return modeAnimation() === 'complet' && !images.mascotte && !skinPorte() && !estRose()
     && !Object.values(etat.chouette.porte || {}).some(Boolean);
@@ -494,7 +517,7 @@ function figureSerie(s, fait) {
   const anime = SKINS.find((x) => x.id === skin)?.anime;
   const filme = skin && SKINS.find((x) => x.id === skin)?.film && modeAnimation() === 'complet';
   const bete = skin ? skinVivant(skin, { classe: 'sur-accueil', danse: true })
-    : lexouVideoPossible() ? lexouAnime(Math.random() < 0.5 ? 'lecture' : 'plume', { taille: 210, classe: 'sur-accueil', repli: chouette('debout', { taille: 210 }) })
+    : lexouVideoPossible() ? lexouAnime(lexouAccueil(), { taille: 210, classe: 'sur-accueil', repli: chouette('debout', { taille: 210 }) })
     : chouette(retour ? 'serment' : 'debout', { taille: 236, vivante: true, classe: `sur-accueil ${reveil ? 'reveil' : ''}` });
   let enScene = bete;
   const reagirTape = () => {
@@ -631,6 +654,7 @@ function accueil() {
     barreHaut(),
     h('button', { class: 'bouton-matiere', onClick: () => { son('retour'); fixerSens('arriere'); matieres(); } }, icone('matieres', 18), matiereDe(etat.matiere).nom, estConstit() ? '' : estIntro() ? `, équipe ${etat.equipeL1}` : `, équipe ${etat.equipe}`),
     h('section', { class: 'tribune', 'data-decor': etat.decor },
+      ...decorSaison(),
       h('div', { class: 'serie-bloc' },
         h('span', { class: 'serie-etiquette' }, 'Ta série'),
         h('p', { class: 'serie-txt' }, h('b', { class: 'serie-nombre' }, String(s.n)), s.n === 1 ? ' jour' : ' jours'),
@@ -1250,8 +1274,11 @@ function resultats(S, reussi) {
     : !reussi || moyenne < 0.4 ? 'pause' : moyenne < 0.8 ? 'piles' : 'clin';
   const figureStatique = chouette(poseFin, { taille: 188, classe: `res-chouette ${nouveauGrade || grandeVictoire ? 'grande' : ''}`, vivante: true });
   // Une séance réussie : Lexou fête ça en vidéo, quand c'est possible.
-  const figureFin = reussi && pourcent >= 70 && lexouVideoPossible()
-    ? lexouAnime('victoire', { taille: 188, classe: `res-chouette ${nouveauGrade || grandeVictoire ? 'grande' : ''}`, repli: chouette(poseFin, { taille: 188 }) })
+  // Lexou réagit en vidéo, quand c'est possible : feu d'artifice pour un sans-faute ou une audience gagnée,
+  // joie pour une séance réussie, perplexité pour une séance à revoir.
+  const reaction = grandeVictoire ? 'robe-feu' : reussi && pourcent >= 70 ? ['victoire', 'robe-applaudit', 'robe-danse'][Math.floor(Math.random() * 3)] : 'robe-gratte';
+  const figureFin = lexouVideoPossible()
+    ? lexouAnime(reaction, { taille: 188, classe: `res-chouette ${nouveauGrade || grandeVictoire ? 'grande' : ''}`, repli: chouette(poseFin, { taille: 188 }) })
     : figureStatique;
 
   const titreTxt = S.type === 'boss' ? (reussi ? 'Audience gagnée' : 'Audience perdue') : pourcent === 100 ? 'Sans faute' : pourcent >= 70 ? 'Bien jugé' : 'À réviser';

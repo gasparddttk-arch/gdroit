@@ -24,6 +24,14 @@ export const ANIMATIONS = {
   alcoolique: { l: 397, h: 420, images: 90, boucle: true },
   tung: { l: 388, h: 420, images: 90, boucle: true },
   noel: { l: 270, h: 420, images: 30, boucle: true },
+  // Accueil : Lexou à l'écharpe (hiver) et à son bureau (le soir).
+  echarpe: { l: 259, h: 420, images: 90, boucle: true },
+  bureau: { l: 355, h: 420, images: 90, boucle: true },
+  // Fin de séance, Lexou en robe : il applaudit, danse, lance un feu d'artifice, ou se gratte la tête.
+  'robe-applaudit': { l: 259, h: 420, images: 40, boucle: false },
+  'robe-danse': { l: 443, h: 420, images: 60, boucle: false },
+  'robe-feu': { l: 420, h: 420, images: 60, boucle: false },
+  'robe-gratte': { l: 319, h: 420, images: 40, boucle: false },
 };
 
 // Charge et décode toutes les planches d'une animation ; rejette si l'une manque (hors ligne).

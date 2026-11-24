@@ -2265,3 +2265,14 @@ body:has(#onglets[hidden]) .clone-sortant {
 .cmt-liste .bouton-or { width: 100%; margin-top: 4px; }
 
 .tour-liste.une-colonne { grid-template-columns: 1fr; list-style: none; padding: 0; gap: 8px; }
+
+/* Décors de saison sur l'accueil : neige (décembre-janvier) et guirlande (décembre). */
+.tribune .neige { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; z-index: 0; }
+.tribune .neige i { position: absolute; top: -8px; left: var(--x); width: var(--t); height: var(--t); border-radius: 50%; background: #fff; opacity: .75;
+  animation: flocon var(--d) linear var(--r) infinite; }
+@keyframes flocon { from { transform: translate(0, 0); } 50% { transform: translate(12px, 120px); } to { transform: translate(-6px, 260px); } }
+.tribune .guirlande { position: absolute; left: 10px; right: 10px; width: calc(100% - 20px); top: -22px; height: auto; pointer-events: none; z-index: 0;
+  filter: drop-shadow(0 3px 3px rgb(0 0 0 / .25)); animation: guirlande-scintille 2.4s ease-in-out infinite alternate; }
+@keyframes guirlande-scintille { from { filter: drop-shadow(0 3px 3px rgb(0 0 0 / .25)) brightness(1); } to { filter: drop-shadow(0 3px 3px rgb(0 0 0 / .25)) brightness(1.12); } }
+.tribune:has(> .guirlande) .serie-bloc { padding-top: 46px; }
+@media (prefers-reduced-motion: reduce) { .tribune .neige { display: none; } .tribune .guirlande { animation: none; } }
