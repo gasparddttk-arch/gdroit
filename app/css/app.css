@@ -2276,7 +2276,3 @@ body:has(#onglets[hidden]) .clone-sortant {
 @keyframes guirlande-scintille { from { filter: drop-shadow(0 3px 3px rgb(0 0 0 / .25)) brightness(1); } to { filter: drop-shadow(0 3px 3px rgb(0 0 0 / .25)) brightness(1.12); } }
 .tribune:has(> .guirlande) .serie-bloc { padding-top: 46px; }
 @media (prefers-reduced-motion: reduce) { .tribune .neige { display: none; } .tribune .guirlande { animation: none; } }
-/* Le tampon du sceau du jour. */
-.tampon .tampon-film { margin: 0 auto; }
-.tampon .sceau.apparait { animation: sceau-apparait .25s ease-out; }
-@keyframes sceau-apparait { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }

@@ -32,8 +32,6 @@ export const ANIMATIONS = {
   'robe-danse': { l: 443, h: 420, images: 60, boucle: false },
   'robe-feu': { l: 420, h: 420, images: 60, boucle: false },
   'robe-gratte': { l: 319, h: 420, images: 40, boucle: false },
-  // Le sceau du jour : le tampon s'abat sur la cire.
-  tampon: { l: 320, h: 320, images: 30, boucle: false, cadre: true },
 };
 
 // Charge et décode toutes les planches d'une animation ; rejette si l'une manque (hors ligne).

@@ -1378,16 +1378,9 @@ function resultats(S, reussi) {
   // Le moment fort : le sceau du jour s'abat sur le registre.
   if (v.nouveau) {
     const s = sceau(v.n, { taille: 132 });
-    if (lexouVideoPossible()) {
-      // Le tampon s'abat sur la cire, puis le sceau numéroté prend sa place.
-      const coup = lexouAnime('tampon', { taille: 132, classe: 'tampon-film', fin: () => setTimeout(() => { s.classList.add('apparait'); coup.replaceWith(s); }, 250) });
-      zoneSceau.append(coup);
-      setTimeout(() => { son('sceau'); vibrer(15); }, 330);
-    } else {
-      zoneSceau.append(s);
-      s.classList.add('frappe');
-      setTimeout(() => son('sceau'), 330);
-    }
+    zoneSceau.append(s);
+    s.classList.add('frappe');
+    setTimeout(() => son('sceau'), 330);
     if (apres.i > avant.i || parfaite || v.coffre) setTimeout(() => { if (apres.i > avant.i || v.coffre) confettis(); son(v.coffre ? 'coffre' : 'grade'); }, 900);
   } else {
     zoneSceau.append(sceau(etat.serie.n, { taille: 96, lauriers: false, eteint: etat.serie.n === 0 }));
